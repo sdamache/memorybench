@@ -47,7 +47,6 @@ export default {
 					},
 				}));
 			}
-
 			default:
 				throw new Error(
 					`RAG provider does not support benchmark type: ${benchmarkType}`,
