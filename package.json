@@ -1,21 +1,27 @@
 {
-  "name": "memorybench",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.17",
-    "@ai-sdk/google": "^2.0.14",
-    "@ai-sdk/google-vertex": "^3.0.74",
-    "ai": "^5.0.44",
-    "bun": "^1.3.5",
-    "dedent": "^1.7.0",
-    "zod": "^4.1.9"
-  }
+	"name": "memorybench",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@types/bun": "latest"
+	},
+	"scripts": {
+		"check": "biome check .",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^2.0.17",
+		"@ai-sdk/google": "^2.0.14",
+		"@ai-sdk/google-vertex": "^3.0.74",
+		"ai": "^5.0.44",
+		"bun": "^1.3.5",
+		"dedent": "^1.7.0",
+		"zod": "^4.1.9"
+	}
 }

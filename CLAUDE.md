@@ -109,6 +109,8 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 ## Active Technologies
 - Markdown (documentation only) + N/A (no code dependencies) (001-v01-scope-doc)
 - N/A (file-based documentation) (001-v01-scope-doc)
+- TypeScript 5.x (Bun runtime) + Biome (lint+format), Bun (runtime, test runner) (002-contributor-tooling)
+- N/A (tooling config only) (002-contributor-tooling)
 
 ## Recent Changes
 - 001-v01-scope-doc: Added Markdown (documentation only) + N/A (no code dependencies)

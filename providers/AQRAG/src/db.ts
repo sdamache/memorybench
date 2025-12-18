@@ -91,7 +91,7 @@ export async function findSimilarWeighted(
 	embedding: number[],
 	// if questionWeight is 1, only search chunks
 	// if questionWeight is 0, only search questions
-	questionWeight: number = 1.0,
+	questionWeight = 1.0,
 	limit: number,
 ): Promise<WeightedSearchResult[]> {
 	const chunkWeight = 1 - questionWeight;
