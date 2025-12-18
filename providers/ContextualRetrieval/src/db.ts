@@ -5,7 +5,8 @@ import type { Chunk, ChunkWithEmbedding, Document } from "./types.ts";
 export async function initDatabase() {
 	try {
 		// Read and execute schema
-		const schemaFile = Bun.file("./schema.sql");
+		// TODO: Fixed path resolution - use import.meta.dir to resolve relative to module, not CWD
+		const schemaFile = Bun.file(import.meta.dir + "/../schema.sql");
 		const schema = await schemaFile.text();
 
 		// Split by statements and execute each one

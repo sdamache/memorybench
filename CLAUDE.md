@@ -105,3 +105,10 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+## Active Technologies
+- Markdown (documentation only) + N/A (no code dependencies) (001-v01-scope-doc)
+- N/A (file-based documentation) (001-v01-scope-doc)
+
+## Recent Changes
+- 001-v01-scope-doc: Added Markdown (documentation only) + N/A (no code dependencies)

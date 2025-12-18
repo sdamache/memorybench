@@ -42,3 +42,8 @@ evaluations/
 
 # Checkpoints
 checkpoints/
+
+
+.claude/*
+.specify/*
+specs/*
