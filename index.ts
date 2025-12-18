@@ -1,6 +1,10 @@
 import type { BenchmarkRegistry, BenchmarkType } from "./benchmarks";
 import { ragBenchmarkData } from "./benchmarks";
-import { AQRAGProvider, ContextualRetrievalProvider, type TemplateType } from "./providers";
+import {
+	AQRAGProvider,
+	ContextualRetrievalProvider,
+	type TemplateType,
+} from "./providers";
 
 // Provider registry
 const PROVIDERS: Record<string, TemplateType> = {

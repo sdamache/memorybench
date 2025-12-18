@@ -15,7 +15,10 @@ export const contextualRetrievalPrompt = (document: string, chunk: string) => {
 };
 
 // prompt to answer a question with retrieved search results
-export const answerQuestionWithRetrievedSearchResultsPrompt = (question: string, searchResults: string) => {
+export const answerQuestionWithRetrievedSearchResultsPrompt = (
+	question: string,
+	searchResults: string,
+) => {
 	return dedent`You are an intelligent memory assistant tasked with retrieving accurate information from conversation memories.
 
     # CONTEXT:
