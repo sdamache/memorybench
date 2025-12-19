@@ -40,7 +40,11 @@ const memory: MemoryRecord = {
 
 // Test JSON serialization
 const json = JSON.stringify(memory);
-const restored: MemoryRecord = JSON.parse(json);
+const parsed: unknown = JSON.parse(json);
+if (!isMemoryRecord(parsed)) {
+	throw new Error("JSON deserialization failed type guard validation");
+}
+const restored: MemoryRecord = parsed;
 
 // Test 3: Handling RetrievalItems
 const results: RetrievalItem[] = [

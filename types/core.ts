@@ -233,6 +233,8 @@ export function isMemoryRecord(obj: unknown): obj is MemoryRecord {
 		typeof (obj as MemoryRecord).id === "string" &&
 		typeof (obj as MemoryRecord).context === "string" &&
 		typeof (obj as MemoryRecord).metadata === "object" &&
+		(obj as MemoryRecord).metadata !== null &&
+		!Array.isArray((obj as MemoryRecord).metadata) &&
 		typeof (obj as MemoryRecord).timestamp === "number"
 	);
 }
