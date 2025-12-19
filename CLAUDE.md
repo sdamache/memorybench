@@ -111,6 +111,9 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - N/A (file-based documentation) (001-v01-scope-doc)
 - TypeScript 5.x (Bun runtime) + Biome (lint+format), Bun (runtime, test runner) (002-contributor-tooling)
 - N/A (tooling config only) (002-contributor-tooling)
+- TypeScript 5.x (Bun runtime) + None beyond TypeScript - pure type definitions (003-core-types)
+- N/A (type definitions only, no runtime storage) (003-core-types)
 
 ## Recent Changes
+- 003-core-types: Added TypeScript 5.x (Bun runtime) + None beyond TypeScript - pure type definitions
 - 001-v01-scope-doc: Added Markdown (documentation only) + N/A (no code dependencies)
