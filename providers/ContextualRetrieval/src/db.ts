@@ -1,6 +1,9 @@
 import { sql } from "bun";
 import type { Chunk, ChunkWithEmbedding, Document } from "./types.ts";
 
+const SCHEMA = "contextual_retrieval";
+const table = (name: string) => sql(`${SCHEMA}.${name}`);
+
 // Initialize database by creating tables
 export async function initDatabase() {
 	try {
@@ -29,7 +32,7 @@ export async function initDatabase() {
 // Document operations
 export async function insertDocument(content: string): Promise<Document> {
 	const [document] = await sql`
-    INSERT INTO documents (content)
+    INSERT INTO ${table("documents")} (content)
     VALUES (${content})
     RETURNING *
   `;
@@ -38,14 +41,14 @@ export async function insertDocument(content: string): Promise<Document> {
 
 export async function getDocument(id: number): Promise<Document | undefined> {
 	const [document] = await sql`
-    SELECT * FROM documents WHERE id = ${id}
+    SELECT * FROM ${table("documents")} WHERE id = ${id}
   `;
 	return document;
 }
 
 export async function getAllDocuments(): Promise<Document[]> {
 	return await sql`
-    SELECT * FROM documents ORDER BY id DESC
+    SELECT * FROM ${table("documents")} ORDER BY id DESC
   `;
 }
 
@@ -57,14 +60,14 @@ export async function insertChunk(
 ): Promise<Chunk> {
 	// First insert the chunk
 	const [chunk] = await sql`
-    INSERT INTO chunks (document_id, content)
+    INSERT INTO ${table("chunks")} (document_id, content)
     VALUES (${documentId}, ${content})
     RETURNING *
   `;
 
 	// Then insert the embedding
 	await sql`
-    INSERT INTO embeddings (chunk_id, embedding)
+    INSERT INTO ${table("embeddings")} (chunk_id, embedding)
     VALUES (${chunk.id}, ${JSON.stringify(embedding)}::vector)
   `;
 
@@ -76,8 +79,8 @@ export async function getChunksByDocument(
 ): Promise<ChunkWithEmbedding[]> {
 	return await sql`
     SELECT c.*, e.embedding
-    FROM chunks c
-    LEFT JOIN embeddings e ON c.id = e.chunk_id
+    FROM ${table("chunks")} c
+    LEFT JOIN ${table("embeddings")} e ON c.id = e.chunk_id
     WHERE c.document_id = ${documentId}
     ORDER BY c.id
   `;
@@ -86,9 +89,9 @@ export async function getChunksByDocument(
 export async function getAllChunks(): Promise<ChunkWithEmbedding[]> {
 	return await sql`
     SELECT c.*, e.embedding, d.content as document_content
-    FROM chunks c
-    LEFT JOIN embeddings e ON c.id = e.chunk_id
-    LEFT JOIN documents d ON c.document_id = d.id
+    FROM ${table("chunks")} c
+    LEFT JOIN ${table("embeddings")} e ON c.id = e.chunk_id
+    LEFT JOIN ${table("documents")} d ON c.document_id = d.id
     ORDER BY c.id
   `;
 }
@@ -100,9 +103,9 @@ export async function findSimilarChunks(
 	return await sql`
     SELECT c.*, e.embedding, d.content as document_content,
            (1 - (e.embedding <-> ${JSON.stringify(embedding)}::vector)) as similarity_score
-    FROM chunks c
-    JOIN embeddings e ON c.id = e.chunk_id
-    JOIN documents d ON c.document_id = d.id
+    FROM ${table("chunks")} c
+    JOIN ${table("embeddings")} e ON c.id = e.chunk_id
+    JOIN ${table("documents")} d ON c.document_id = d.id
     ORDER BY e.embedding <-> ${JSON.stringify(embedding)}::vector
     LIMIT ${limit}
   `;
