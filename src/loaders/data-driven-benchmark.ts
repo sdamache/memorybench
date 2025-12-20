@@ -291,7 +291,16 @@ export async function createDataDrivenBenchmark(
 				});
 
 				// Phase 5: Calculate retrieval metrics
-				const relevantIds = benchmarkCase.input.answer_session_ids as string[] | undefined;
+				// Use configured field name from manifest instead of hard-coded key
+				let relevantIds: string[] | undefined;
+				if (
+					manifest.ingestion.strategy === "session-based" &&
+					manifest.ingestion.answer_session_ids_field
+				) {
+					relevantIds = benchmarkCase.input[
+						manifest.ingestion.answer_session_ids_field
+					] as string[] | undefined;
+				}
 				const retrievalMetrics = relevantIds
 					? calculateRetrievalMetrics({
 							retrievalResults,
