@@ -2,7 +2,7 @@
   "manifest_version": "1",
   "provider": {
     "name": "valid-minimal",
-    "type": "local",
+    "type": "framework",
     "version": "1.0.0"
   },
   "capabilities": {
