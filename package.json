@@ -10,7 +10,8 @@
 	"scripts": {
 		"check": "biome check .",
 		"typecheck": "tsc --noEmit",
-		"test": "bun test"
+		"test": "bun test",
+		"dashboard": "bun run dashboard/server.ts"
 	},
 	"peerDependencies": {
 		"typescript": "^5"

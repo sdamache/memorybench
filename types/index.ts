@@ -35,3 +35,18 @@ export {
 	isLegacyTemplate,
 	hasCapability,
 } from "./provider";
+
+// Results types (dashboard)
+export type {
+	RunManifest,
+	RunProviderInfo,
+	RunBenchmarkInfo,
+	RunSummary,
+	TestStatus,
+	BenchmarkResult,
+	BenchmarkMetrics,
+	BenchmarkError,
+	ProviderBenchmarkSummary,
+	DashboardData,
+} from "./results";
+export { isTestStatus, isBenchmarkResult } from "./results";
