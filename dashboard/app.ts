@@ -576,15 +576,111 @@ function renderResultsTable(results: BenchmarkResult[]): string {
   `;
 }
 
+function renderSidebar(): string {
+	const manifest = state.manifest;
+	const providers = [...new Set(state.results.map((r) => r.provider))];
+	const benchmarks = [...new Set(state.results.map((r) => r.benchmark))];
+
+	return `
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">&#9881;</div>
+          <span class="logo-text">MemoryBench</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active">
+          <span class="nav-icon">&#128200;</span>
+          Dashboard
+        </div>
+        <div class="nav-item">
+          <span class="nav-icon">&#128202;</span>
+          Comparison
+        </div>
+        <div class="nav-item">
+          <span class="nav-icon">&#128203;</span>
+          Results
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Providers</div>
+          ${providers.map((p) => `
+            <div class="nav-item ${state.selectedProvider === p ? "active" : ""}" data-provider="${escapeHtml(p)}">
+              <span class="nav-icon">&#9881;</span>
+              ${escapeHtml(p)}
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Benchmarks</div>
+          ${benchmarks.map((b) => `
+            <div class="nav-item ${state.selectedBenchmark === b ? "active" : ""}" data-benchmark="${escapeHtml(b)}">
+              <span class="nav-icon">&#128196;</span>
+              ${escapeHtml(b)}
+            </div>
+          `).join("")}
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        ${manifest ? `
+          <div class="run-badge">
+            <span class="run-badge-dot ${manifest.status === "failed" ? "failed" : ""}"></span>
+            <span>${escapeHtml(manifest.run_id.slice(-12))}</span>
+          </div>
+        ` : ""}
+      </div>
+    </aside>
+  `;
+}
+
+function renderPageHeader(): string {
+	const manifest = state.manifest!;
+	const startDate = new Date(manifest.started_at);
+
+	return `
+    <div class="page-header">
+      <div class="page-header-top">
+        <div>
+          <h1 class="page-title">Benchmark Results</h1>
+          <p class="page-subtitle">Compare memory provider performance across benchmarks</p>
+        </div>
+        <div class="header-meta">
+          <div class="meta-item">
+            <span>Run ID:</span>
+            <strong>${escapeHtml(manifest.run_id)}</strong>
+          </div>
+          <div class="meta-item">
+            <span>Started:</span>
+            <strong>${startDate.toLocaleString()}</strong>
+          </div>
+          ${manifest.summary ? `
+            <div class="meta-item">
+              <span>Duration:</span>
+              <strong>${formatDuration(manifest.summary.duration_ms)}</strong>
+            </div>
+          ` : ""}
+          <span class="status-pill ${manifest.status}">${manifest.status}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function render(): void {
 	const root = document.getElementById("root");
 	if (!root) return;
 
 	if (!state.manifest) {
 		root.innerHTML = `
-      <div class="dashboard">
-        <div class="loading">
-          <div class="loading-spinner"></div>
+      <div class="app-container">
+        <div class="main-content" style="margin-left: 0; max-width: 100%;">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+          </div>
         </div>
       </div>
     `;
@@ -595,12 +691,15 @@ function render(): void {
 	const summaries = computeSummaries(filteredResults);
 
 	root.innerHTML = `
-    <div class="dashboard">
-      ${renderHeader()}
-      ${renderSummaryCards()}
-      ${renderFilters()}
-      ${renderComparisonTable(summaries)}
-      ${renderResultsTable(filteredResults)}
+    <div class="app-container">
+      ${renderSidebar()}
+      <main class="main-content">
+        ${renderPageHeader()}
+        ${renderSummaryCards()}
+        ${renderFilters()}
+        ${renderComparisonTable(summaries)}
+        ${renderResultsTable(filteredResults)}
+      </main>
     </div>
   `;
 
@@ -662,6 +761,24 @@ function attachEventListeners(): void {
 		tr.addEventListener("click", () => {
 			const resultId = (tr as HTMLElement).dataset.resultId!;
 			state.expandedResultId = state.expandedResultId === resultId ? null : resultId;
+			render();
+		});
+	});
+
+	// Sidebar provider navigation
+	document.querySelectorAll("[data-provider]").forEach((item) => {
+		item.addEventListener("click", () => {
+			const provider = (item as HTMLElement).dataset.provider!;
+			state.selectedProvider = state.selectedProvider === provider ? "" : provider;
+			render();
+		});
+	});
+
+	// Sidebar benchmark navigation
+	document.querySelectorAll("[data-benchmark]").forEach((item) => {
+		item.addEventListener("click", () => {
+			const benchmark = (item as HTMLElement).dataset.benchmark!;
+			state.selectedBenchmark = state.selectedBenchmark === benchmark ? "" : benchmark;
 			render();
 		});
 	});
