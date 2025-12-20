@@ -57,20 +57,20 @@ function log(entry: LogEntry): void {
 // =============================================================================
 
 /**
- * Discover all benchmark directories containing index.ts files.
+ * Discover all benchmark directories containing index.ts or manifest.json files.
  * Excludes node_modules/, tests/, and fixtures/ directories.
  *
  * @param baseDir - Base directory to search (defaults to cwd/benchmarks)
- * @returns Array of absolute paths to benchmark index.ts files
+ * @returns Array of absolute paths to benchmark files (index.ts or manifest.json)
  */
 export async function discoverBenchmarks(
 	baseDir: string = path.join(process.cwd(), "benchmarks"),
 ): Promise<string[]> {
-	const glob = new Glob("**/index.ts");
 	const benchmarkPaths: string[] = [];
 
-	for await (const file of glob.scan({ cwd: baseDir })) {
-		// Exclude node_modules, tests, and fixtures directories
+	// Discover code-based benchmarks (index.ts)
+	const codeGlob = new Glob("**/index.ts");
+	for await (const file of codeGlob.scan({ cwd: baseDir })) {
 		if (
 			file.includes("node_modules/") ||
 			file.includes("/tests/") ||
@@ -78,7 +78,19 @@ export async function discoverBenchmarks(
 		) {
 			continue;
 		}
+		benchmarkPaths.push(path.join(baseDir, file));
+	}
 
+	// Discover data-driven benchmarks (manifest.json)
+	const manifestGlob = new Glob("**/manifest.json");
+	for await (const file of manifestGlob.scan({ cwd: baseDir })) {
+		if (
+			file.includes("node_modules/") ||
+			file.includes("/tests/") ||
+			file.includes("/fixtures/")
+		) {
+			continue;
+		}
 		benchmarkPaths.push(path.join(baseDir, file));
 	}
 
@@ -94,14 +106,42 @@ export async function discoverBenchmarks(
 
 /**
  * Load and validate a single benchmark from a file path.
+ * Supports both code-based (index.ts) and data-driven (manifest.json) benchmarks.
  *
- * @param filePath - Absolute path to benchmark index.ts
+ * @param filePath - Absolute path to benchmark index.ts or manifest.json
  * @returns LoadedBenchmarkEntry or throws error
  */
 export async function loadBenchmark(
 	filePath: string,
 ): Promise<LoadedBenchmarkEntry> {
 	try {
+		// Check if this is a manifest-based benchmark
+		if (filePath.endsWith("manifest.json")) {
+			const {
+				loadBenchmarkManifest,
+				createDataDrivenBenchmark,
+			} = await import("./data-driven-benchmark");
+
+			const manifest = await loadBenchmarkManifest(filePath);
+			const benchmark = await createDataDrivenBenchmark(manifest, filePath);
+			const benchmarkPath = path.dirname(filePath);
+
+			log(
+				createLogEntry("info", "benchmark_loaded", {
+					name: benchmark.meta.name,
+					version: benchmark.meta.version,
+					path: benchmarkPath,
+					type: "data-driven",
+				}),
+			);
+
+			return {
+				benchmark,
+				path: benchmarkPath,
+			};
+		}
+
+		// Code-based benchmark (index.ts)
 		const module = await import(filePath);
 
 		if (!module.default) {
@@ -126,6 +166,7 @@ export async function loadBenchmark(
 				name: benchmark.meta.name,
 				version: benchmark.meta.version,
 				path: benchmarkPath,
+				type: "code-based",
 			}),
 		);
 
