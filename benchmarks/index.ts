@@ -1,10 +1,9 @@
-import type { LoCoMoBenchmarkItem } from "./LoCoMo/types";
 import type { RAGBenchmarkItem } from "./RAG-template-benchmark/types";
 
 export interface BenchmarkRegistry {
 	"RAG-template-benchmark": RAGBenchmarkItem;
-	LoCoMo: LoCoMoBenchmarkItem;
 	// Future benchmarks can be added here
+	// 'LoCoMo': LoCoMoBenchmarkItem;
 	// 'QA': QABenchmarkItem;
 	// 'Summarization': SummarizationBenchmarkItem;
 }
