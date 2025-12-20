@@ -49,7 +49,7 @@ function createLogEntry(
 }
 
 function log(entry: LogEntry): void {
-	console.log(JSON.stringify(entry));
+	console.error(JSON.stringify(entry));
 }
 
 // =============================================================================
