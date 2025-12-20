@@ -9,7 +9,6 @@
  */
 
 import { Glob } from "bun";
-import path from "node:path";
 import {
 	ProviderManifestV1Schema,
 	SUPPORTED_MANIFEST_VERSIONS,
@@ -154,37 +153,49 @@ export function validateManifest(
 }
 
 /**
+ * Type predicate for issues with a 'received' property.
+ * Uses structural typing to check for the property at runtime.
+ */
+interface IssueWithReceived {
+	received: unknown;
+}
+
+function hasReceivedProperty(
+	issue: z.ZodIssue,
+): issue is z.ZodIssue & IssueWithReceived {
+	return "received" in issue;
+}
+
+/**
  * Extract expected value description from Zod issue.
+ * Only accesses properties that TypeScript guarantees exist for each issue code.
  */
 function getExpectedValue(issue: z.ZodIssue): string {
 	switch (issue.code) {
 		case "invalid_type":
 			return `Expected ${issue.expected}`;
-		case "invalid_enum_value":
-			return `Expected one of: ${(issue.options as string[]).join(", ")}`;
-		case "invalid_literal":
-			return `Expected ${JSON.stringify(issue.expected)}`;
 		case "too_small":
-			return `Minimum ${issue.type === "string" ? "length" : "value"}: ${issue.minimum}`;
+			return `Minimum: ${issue.minimum}`;
 		case "too_big":
-			return `Maximum ${issue.type === "string" ? "length" : "value"}: ${issue.maximum}`;
+			return `Maximum: ${issue.maximum}`;
 		default:
+			// For all other issue types (enum, literal, union, etc.),
+			// Zod's own message is already well-formatted and descriptive
 			return issue.message;
 	}
 }
 
 /**
  * Extract received value description from Zod issue.
+ * Only accesses properties that TypeScript guarantees exist for each issue code.
  */
 function getReceivedValue(issue: z.ZodIssue): string {
-	switch (issue.code) {
-		case "invalid_type":
-			return `Received ${issue.received}`;
-		case "invalid_enum_value":
-			return `Received "${issue.received}"`;
-		default:
-			return "invalid";
+	// Use type predicate to safely narrow the type
+	if (hasReceivedProperty(issue)) {
+		return `Received ${issue.received}`;
 	}
+	// For other error types, the message already contains the received value
+	return "";
 }
 
 // =============================================================================
@@ -202,9 +213,14 @@ export function formatValidationError(error: ManifestValidationError): string {
 	const lines = [`Manifest validation failed: ${error.path}`];
 
 	for (const fieldError of error.errors) {
-		lines.push(
-			`  - ${fieldError.field}: ${fieldError.expected}. ${fieldError.received}.`,
-		);
+		const parts = [
+			`  - ${fieldError.field} [${fieldError.rule}]:`,
+			fieldError.expected,
+		];
+		if (fieldError.received) {
+			parts.push(fieldError.received);
+		}
+		lines.push(parts.join(" ") + ".");
 	}
 
 	return lines.join("\n");
@@ -215,15 +231,35 @@ export function formatValidationError(error: ManifestValidationError): string {
 // =============================================================================
 
 /**
+ * Recursively sort object keys for canonical JSON representation.
+ * Ensures deterministic stringification for hashing.
+ */
+function canonicalize(obj: unknown): unknown {
+	if (obj === null || typeof obj !== "object") {
+		return obj;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map(canonicalize);
+	}
+
+	const sorted: Record<string, unknown> = {};
+	for (const key of Object.keys(obj).sort()) {
+		sorted[key] = canonicalize((obj as Record<string, unknown>)[key]);
+	}
+	return sorted;
+}
+
+/**
  * Compute SHA-256 hash of manifest content.
- * Uses canonical JSON (sorted keys) for stable hashing.
+ * Uses canonical JSON (recursively sorted keys) for stable hashing.
  *
  * @param manifest - Validated manifest
  * @returns Hex-encoded SHA-256 hash
  */
 export function hashManifest(manifest: ProviderManifest): string {
-	// Canonical JSON: sorted keys for deterministic hashing
-	const canonical = JSON.stringify(manifest, Object.keys(manifest).sort());
+	// Canonical JSON: recursively sort all object keys for deterministic hashing
+	const canonical = JSON.stringify(canonicalize(manifest));
 	const hash = new Bun.CryptoHasher("sha256");
 	hash.update(canonical);
 	return hash.digest("hex");
@@ -235,6 +271,16 @@ export function hashManifest(manifest: ProviderManifest): string {
 
 /** Warning threshold for convergence_wait_ms (FR-015) */
 const CONVERGENCE_WARNING_THRESHOLD_MS = 10000;
+
+/**
+ * Type guard for validation failures.
+ * Explicitly narrows ValidationResult to the error case for TypeScript.
+ */
+function isValidationError(
+	result: ValidationResult,
+): result is { success: false; error: ManifestValidationError } {
+	return !result.success;
+}
 
 /**
  * Load all provider manifests from the providers directory.
@@ -260,11 +306,13 @@ export async function loadAllProviders(
 			const json = await loadManifest(manifestPath);
 			const result = validateManifest(json, manifestPath);
 
-			if (!result.success) {
+			// Early exit on validation failure - use type guard to narrow types
+			if (isValidationError(result)) {
 				errors.push(result.error);
 				continue;
 			}
 
+			// TypeScript now knows result.success === true, so result.data exists
 			const manifest = result.data;
 
 			// Check for duplicate name+version (FR-012)

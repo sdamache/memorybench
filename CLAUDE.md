@@ -31,6 +31,16 @@ test("hello world", () => {
 });
 ```
 
+## TypeScript Guidelines
+
+**CRITICAL: No escape hatches. Write real, type-safe code.**
+
+1. **Never use type bypasses**: No `as any`, `@ts-ignore`, `@ts-expect-error`, or `|| true` to hide errors. These are shortcuts that hide real problems. If TypeScript complains, fix the code properly using type guards, proper types, or refactoring.
+
+2. **Use proper TypeScript patterns**: For discriminated unions, use type guards (`issue is TypeName`) or early returns. For runtime property checks, use structural typing with `"property" in obj`. Never assume properties exist without proving it to TypeScript.
+
+3. **Canonical JSON requires recursive sorting**: When hashing objects, `JSON.stringify(obj, Object.keys(obj).sort())` only sorts top-level keys and filters nested properties. Write a recursive `canonicalize()` function to sort all object keys at all levels.
+
 ## Frontend
 
 Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
