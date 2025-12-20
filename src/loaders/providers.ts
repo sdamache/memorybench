@@ -838,7 +838,8 @@ export class ProviderRegistry {
 					continue;
 				}
 
-				const manifestJson = await manifestFile.json();
+				// Use loadManifest() for better JSON error messages (position, line info)
+				const manifestJson = await loadManifest(manifestPath);
 				const manifestResult = validateManifest(
 					manifestJson,
 					manifestPath,
