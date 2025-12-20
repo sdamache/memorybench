@@ -583,18 +583,28 @@ export async function discoverProviderDirectories(
 	// For production: search in providers/ subdirectory
 	// For testing: search in any subdirectory (used with fixtures dir)
 	const isTestFixtures = baseDir.includes("/fixtures");
-	const pattern = isTestFixtures ? "*/index.ts" : "providers/**/index.ts";
 
-	const glob = new Glob(pattern);
-	const directories: string[] = [];
+	const directories = new Set<string>();
 
-	for await (const file of glob.scan({ cwd: baseDir, absolute: true })) {
-		// Get directory path by removing /index.ts
+	// Scan for directories with index.ts (adapters)
+	const indexPattern = isTestFixtures ? "*/index.ts" : "providers/**/index.ts";
+	const indexGlob = new Glob(indexPattern);
+
+	for await (const file of indexGlob.scan({ cwd: baseDir, absolute: true })) {
 		const dirPath = file.replace(/\/index\.ts$/, "");
-		directories.push(dirPath);
+		directories.add(dirPath);
 	}
 
-	return directories;
+	// Also scan for directories with manifest.json (to catch missing-adapter cases)
+	const manifestPattern = isTestFixtures ? "*/manifest.json" : "providers/**/manifest.json";
+	const manifestGlob = new Glob(manifestPattern);
+
+	for await (const file of manifestGlob.scan({ cwd: baseDir, absolute: true })) {
+		const dirPath = file.replace(/\/manifest\.json$/, "");
+		directories.add(dirPath);
+	}
+
+	return Array.from(directories).sort();
 }
 
 /**
@@ -688,6 +698,39 @@ export function validateNameMatch(
 	manifestName: string,
 ): boolean {
 	return adapter.name === manifestName;
+}
+
+/**
+ * Validate that adapter has all optional methods declared in manifest.
+ * Returns array of missing method names (empty if all present).
+ * (T042, FR-014, research R6)
+ *
+ * @param adapter - Provider adapter to validate
+ * @param manifest - Provider manifest with capability declarations
+ * @returns Array of missing method names (empty if valid)
+ */
+export function validateDeclaredOptionalMethods(
+	adapter: import("../../types/provider").BaseProvider,
+	manifest: import("../../types/manifest").ProviderManifest,
+): string[] {
+	const missing: string[] = [];
+	const optionalOps = manifest.capabilities.optional_operations;
+
+	// Check each optional operation declared as true
+	if (optionalOps.update_memory && !adapter.update_memory) {
+		missing.push("update_memory");
+	}
+	if (optionalOps.list_memories && !adapter.list_memories) {
+		missing.push("list_memories");
+	}
+	if (optionalOps.reset_scope && !adapter.reset_scope) {
+		missing.push("reset_scope");
+	}
+	if (optionalOps.get_capabilities && !adapter.get_capabilities) {
+		missing.push("get_capabilities");
+	}
+
+	return missing;
 }
 
 // =============================================================================
@@ -815,6 +858,23 @@ export class ProviderRegistry {
 
 				const manifest = manifestResult.data;
 
+				// Check for adapter file
+				const adapterFile = Bun.file(adapterPath);
+				const adapterExists = await adapterFile.exists();
+
+				if (!adapterExists) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "missing adapter",
+								expected_path: adapterPath,
+							},
+						}),
+					);
+					continue;
+				}
+
 				// Load adapter
 				const adapter = await loadProviderAdapter(
 					adapterPath,
@@ -845,6 +905,72 @@ export class ProviderRegistry {
 								reason: "name mismatch",
 								expected: manifest.provider.name,
 								received: adapter.name,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Validate declared optional methods (T042, FR-014)
+				const missingDeclaredMethods =
+					validateDeclaredOptionalMethods(adapter, manifest);
+				if (missingDeclaredMethods.length > 0) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "missing declared optional methods",
+								missing: missingDeclaredMethods,
+								declared_in_manifest: true,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Check for undeclared capabilities (T043, research R6)
+				// WARN if adapter has optional methods not declared in manifest
+				const optionalOps = manifest.capabilities.optional_operations;
+				const undeclared: string[] = [];
+
+				if (!optionalOps.update_memory && adapter.update_memory) {
+					undeclared.push("update_memory");
+				}
+				if (!optionalOps.list_memories && adapter.list_memories) {
+					undeclared.push("list_memories");
+				}
+				if (!optionalOps.reset_scope && adapter.reset_scope) {
+					undeclared.push("reset_scope");
+				}
+				if (!optionalOps.get_capabilities && adapter.get_capabilities) {
+					undeclared.push("get_capabilities");
+				}
+
+				if (undeclared.length > 0) {
+					log(
+						createLogEntry("WARN", "provider_capability_mismatch", {
+							provider: manifest.provider.name,
+							details: {
+								reason:
+									"adapter has capabilities not declared in manifest",
+								undeclared_capabilities: undeclared,
+								suggestion:
+									"Update manifest.json to declare these capabilities",
+							},
+						}),
+					);
+				}
+
+				// Check for duplicate provider name
+				if (this.providers.has(manifest.provider.name)) {
+					const existing = this.providers.get(manifest.provider.name);
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "duplicate provider name",
+								first_loaded_from: existing?.path,
+								attempted_from: providerDir,
 							},
 						}),
 					);
