@@ -78,14 +78,14 @@ const ragBenchmark: Benchmark = {
 
 			// Step 4: Calculate scores
 			const expected = benchmarkCase.expected as string;
+			const expectedLower = expected.toLowerCase();
 			const hasRelevantDoc = results.some((result) =>
-				result.record.context.toLowerCase().includes("paris"),
-			); // Simplified matching
+				result.record.context.toLowerCase().includes(expectedLower),
+			);
 
 			// Calculate precision: How many retrieved docs are relevant
 			const relevantCount = results.filter((result) => {
 				// Simple heuristic: check if result contains key terms from expected answer
-				const expectedLower = expected.toLowerCase();
 				const contextLower = result.record.context.toLowerCase();
 				return expectedLower
 					.split(" ")
