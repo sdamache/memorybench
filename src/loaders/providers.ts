@@ -21,6 +21,77 @@ import {
 import type { z } from "zod";
 
 // =============================================================================
+// Structured Logging (T009, FR-022, research R3)
+// =============================================================================
+
+/** Log entry structure for structured JSON logging */
+export interface LogEntry {
+	/** ISO 8601 timestamp */
+	timestamp: string;
+	/** Log severity level */
+	level: "DEBUG" | "INFO" | "WARN" | "ERROR";
+	/** Provider name (if applicable) */
+	provider?: string;
+	/** Event type/name */
+	event: string;
+	/** Additional structured data */
+	details?: Record<string, unknown>;
+}
+
+/**
+ * Emit a structured JSON log entry.
+ * Routes to appropriate console method based on level.
+ * (T009, FR-022)
+ *
+ * @param entry - Structured log entry
+ *
+ * @example
+ * ```typescript
+ * log({
+ *   timestamp: new Date().toISOString(),
+ *   level: 'INFO',
+ *   provider: 'my-provider',
+ *   event: 'provider_load_start',
+ *   details: { path: '/path/to/provider' }
+ * });
+ * ```
+ */
+export function log(entry: LogEntry): void {
+	const line = JSON.stringify(entry);
+	switch (entry.level) {
+		case "ERROR":
+			console.error(line);
+			break;
+		case "WARN":
+			console.warn(line);
+			break;
+		default:
+			console.log(line);
+	}
+}
+
+/**
+ * Helper to create a log entry with automatic timestamp.
+ * Reduces boilerplate in logging calls.
+ *
+ * @param level - Log level
+ * @param event - Event type
+ * @param options - Optional provider name and details
+ */
+export function createLogEntry(
+	level: LogEntry["level"],
+	event: string,
+	options?: { provider?: string; details?: Record<string, unknown> },
+): LogEntry {
+	return {
+		timestamp: new Date().toISOString(),
+		level,
+		event,
+		...options,
+	};
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -492,6 +563,483 @@ export function getDeleteStrategy(
  */
 export function getConvergenceWaitMs(manifest: ProviderManifest): number {
 	return manifest.conformance_tests.expected_behavior.convergence_wait_ms;
+}
+
+// =============================================================================
+// Provider Adapter Loading (005-provider-contract: T017-T020)
+// =============================================================================
+
+/**
+ * Discover all provider directories containing index.ts adapters.
+ * Searches recursively in the providers directory for index.ts files.
+ * (T017, FR-010)
+ *
+ * @param baseDir - Base directory to search (defaults to process.cwd())
+ * @returns Array of absolute paths to provider directories
+ */
+export async function discoverProviderDirectories(
+	baseDir: string = process.cwd(),
+): Promise<string[]> {
+	// For production: search in providers/ subdirectory
+	// For testing: search in any subdirectory (used with fixtures dir)
+	const isTestFixtures = baseDir.includes("/fixtures");
+
+	const directories = new Set<string>();
+
+	// Scan for directories with index.ts (adapters)
+	const indexPattern = isTestFixtures ? "*/index.ts" : "providers/**/index.ts";
+	const indexGlob = new Glob(indexPattern);
+
+	for await (const file of indexGlob.scan({ cwd: baseDir, absolute: true })) {
+		const dirPath = file.replace(/\/index\.ts$/, "");
+		directories.add(dirPath);
+	}
+
+	// Also scan for directories with manifest.json (to catch missing-adapter cases)
+	const manifestPattern = isTestFixtures ? "*/manifest.json" : "providers/**/manifest.json";
+	const manifestGlob = new Glob(manifestPattern);
+
+	for await (const file of manifestGlob.scan({ cwd: baseDir, absolute: true })) {
+		const dirPath = file.replace(/\/manifest\.json$/, "");
+		directories.add(dirPath);
+	}
+
+	return Array.from(directories).sort();
+}
+
+/**
+ * Load a provider adapter from index.ts using dynamic import.
+ * Automatically detects BaseProvider vs TemplateType and wraps legacy providers.
+ * (T018, FR-010, FR-019, research R1)
+ *
+ * @param adapterPath - Absolute path to provider's index.ts file
+ * @param providerName - Provider name from manifest (for LegacyProviderAdapter)
+ * @returns Loaded BaseProvider instance
+ * @throws Error if import fails or export is invalid
+ */
+export async function loadProviderAdapter(
+	adapterPath: string,
+	providerName: string,
+): Promise<import("../../types/provider").BaseProvider> {
+	const { isBaseProvider, isLegacyTemplate, LegacyProviderAdapter } =
+		await import("../../types/provider");
+
+	try {
+		// Dynamic import of the provider module
+		const module = await import(adapterPath);
+		const exported = module.default;
+
+		if (!exported) {
+			throw new Error(
+				`Provider at ${adapterPath} does not have a default export`,
+			);
+		}
+
+		// Check if it's already a BaseProvider
+		if (isBaseProvider(exported)) {
+			return exported;
+		}
+
+		// Check if it's a legacy TemplateType
+		if (isLegacyTemplate(exported)) {
+			log(
+				createLogEntry("INFO", "provider_legacy_wrap", {
+					provider: providerName,
+					details: { path: adapterPath },
+				}),
+			);
+			return new LegacyProviderAdapter(exported, providerName);
+		}
+
+		// Neither interface recognized
+		throw new Error(
+			`Provider at ${adapterPath} does not implement BaseProvider or TemplateType interface`,
+		);
+	} catch (error) {
+		throw new Error(
+			`Failed to load provider adapter from ${adapterPath}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}
+
+/**
+ * Validate that an adapter has all required methods.
+ * Checks for add_memory, retrieve_memory, delete_memory.
+ * (T019, FR-013)
+ *
+ * @param adapter - Provider adapter to validate
+ * @returns Array of missing method names (empty if valid)
+ */
+export function validateRequiredMethods(
+	adapter: import("../../types/provider").BaseProvider,
+): string[] {
+	const requiredMethods = ["add_memory", "retrieve_memory", "delete_memory"];
+	const missing: string[] = [];
+
+	for (const method of requiredMethods) {
+		if (typeof (adapter as any)[method] !== "function") {
+			missing.push(method);
+		}
+	}
+
+	return missing;
+}
+
+/**
+ * Validate that adapter name matches manifest provider.name.
+ * (T020, FR-012)
+ *
+ * @param adapter - Provider adapter
+ * @param manifestName - Expected name from manifest
+ * @returns true if names match, false otherwise
+ */
+export function validateNameMatch(
+	adapter: import("../../types/provider").BaseProvider,
+	manifestName: string,
+): boolean {
+	return adapter.name === manifestName;
+}
+
+/**
+ * Validate that adapter has all optional methods declared in manifest.
+ * Returns array of missing method names (empty if all present).
+ * (T042, FR-014, research R6)
+ *
+ * @param adapter - Provider adapter to validate
+ * @param manifest - Provider manifest with capability declarations
+ * @returns Array of missing method names (empty if valid)
+ */
+export function validateDeclaredOptionalMethods(
+	adapter: import("../../types/provider").BaseProvider,
+	manifest: import("../../types/manifest").ProviderManifest,
+): string[] {
+	const missing: string[] = [];
+	const optionalOps = manifest.capabilities.optional_operations;
+
+	// Check each optional operation declared as true
+	// Use typeof check to ensure property is actually a function
+	if (optionalOps.update_memory && typeof adapter.update_memory !== "function") {
+		missing.push("update_memory");
+	}
+	if (optionalOps.list_memories && typeof adapter.list_memories !== "function") {
+		missing.push("list_memories");
+	}
+	if (optionalOps.reset_scope && typeof adapter.reset_scope !== "function") {
+		missing.push("reset_scope");
+	}
+	if (optionalOps.get_capabilities && typeof adapter.get_capabilities !== "function") {
+		missing.push("get_capabilities");
+	}
+
+	return missing;
+}
+
+// =============================================================================
+// ProviderRegistry Singleton (005-provider-contract: T023-T028)
+// =============================================================================
+
+/**
+ * Singleton registry for provider discovery, loading, and access.
+ * Provides unified interface to all loaded providers.
+ * (T023-T028, FR-016, FR-017, FR-023, research R4)
+ *
+ * @example
+ * ```typescript
+ * const registry = await ProviderRegistry.getInstance();
+ * const provider = registry.getProvider('my-provider');
+ * if (provider) {
+ *   await provider.adapter.add_memory(scope, content);
+ * }
+ * ```
+ */
+export class ProviderRegistry {
+	private static instance: ProviderRegistry | null = null;
+
+	private providers: Map<
+		string,
+		import("../../types/provider").LoadedProviderEntry
+	> = new Map();
+
+	/**
+	 * Private constructor - use getInstance() instead.
+	 */
+	private constructor() {}
+
+	/**
+	 * Get singleton instance of ProviderRegistry.
+	 * Lazy initialization with eager provider loading on first call.
+	 * (T025, FR-023, research R4)
+	 *
+	 * @param baseDir - Base directory for provider discovery (defaults to cwd)
+	 * @returns Singleton ProviderRegistry instance
+	 */
+	static async getInstance(
+		baseDir: string = process.cwd(),
+	): Promise<ProviderRegistry> {
+		if (!this.instance) {
+			this.instance = new ProviderRegistry();
+			await this.instance.initialize(baseDir);
+		}
+		return this.instance;
+	}
+
+	/**
+	 * Reset singleton instance.
+	 * Used for testing to allow fresh initialization with different fixtures.
+	 * (T028)
+	 */
+	static reset(): void {
+		this.instance = null;
+	}
+
+	/**
+	 * Initialize registry by discovering and loading all providers.
+	 * Implements eager loading: all providers loaded at startup.
+	 * (T024, FR-023)
+	 *
+	 * @param baseDir - Base directory for provider discovery
+	 */
+	async initialize(baseDir: string): Promise<void> {
+		log(
+			createLogEntry("INFO", "registry_init_start", {
+				details: { baseDir },
+			}),
+		);
+
+		this.providers.clear();
+
+		// Discover all provider directories
+		const providerDirs = await discoverProviderDirectories(baseDir);
+
+		log(
+			createLogEntry("INFO", "registry_discovery_complete", {
+				details: { count: providerDirs.length, dirs: providerDirs },
+			}),
+		);
+
+		// Load each provider
+		for (const providerDir of providerDirs) {
+			try {
+				// Check for manifest
+				const manifestPath = `${providerDir}/manifest.json`;
+				const adapterPath = `${providerDir}/index.ts`;
+
+				// Load manifest
+				const manifestFile = Bun.file(manifestPath);
+				const manifestExists = await manifestFile.exists();
+
+				if (!manifestExists) {
+					log(
+						createLogEntry("WARN", "provider_load_skip", {
+							provider: providerDir,
+							details: { reason: "missing manifest.json" },
+						}),
+					);
+					continue;
+				}
+
+				// Use loadManifest() for better JSON error messages (position, line info)
+				const manifestJson = await loadManifest(manifestPath);
+				const manifestResult = validateManifest(
+					manifestJson,
+					manifestPath,
+				);
+
+				if (!manifestResult.success) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: providerDir,
+							details: {
+								reason: "invalid manifest",
+								errors: manifestResult.error.errors,
+							},
+						}),
+					);
+					continue;
+				}
+
+				const manifest = manifestResult.data;
+
+				// Check for adapter file
+				const adapterFile = Bun.file(adapterPath);
+				const adapterExists = await adapterFile.exists();
+
+				if (!adapterExists) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "missing adapter",
+								expected_path: adapterPath,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Load adapter
+				const adapter = await loadProviderAdapter(
+					adapterPath,
+					manifest.provider.name,
+				);
+
+				// Validate required methods
+				const missingMethods = validateRequiredMethods(adapter);
+				if (missingMethods.length > 0) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "missing required methods",
+								missing: missingMethods,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Validate name match
+				if (!validateNameMatch(adapter, manifest.provider.name)) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "name mismatch",
+								expected: manifest.provider.name,
+								received: adapter.name,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Validate declared optional methods (T042, FR-014)
+				const missingDeclaredMethods =
+					validateDeclaredOptionalMethods(adapter, manifest);
+				if (missingDeclaredMethods.length > 0) {
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "missing declared optional methods",
+								missing: missingDeclaredMethods,
+								declared_in_manifest: true,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Check for undeclared capabilities (T043, research R6)
+				// WARN if adapter has optional methods not declared in manifest
+				const optionalOps = manifest.capabilities.optional_operations;
+				const undeclared: string[] = [];
+
+				if (!optionalOps.update_memory && adapter.update_memory) {
+					undeclared.push("update_memory");
+				}
+				if (!optionalOps.list_memories && adapter.list_memories) {
+					undeclared.push("list_memories");
+				}
+				if (!optionalOps.reset_scope && adapter.reset_scope) {
+					undeclared.push("reset_scope");
+				}
+				if (!optionalOps.get_capabilities && adapter.get_capabilities) {
+					undeclared.push("get_capabilities");
+				}
+
+				if (undeclared.length > 0) {
+					log(
+						createLogEntry("WARN", "provider_capability_mismatch", {
+							provider: manifest.provider.name,
+							details: {
+								reason:
+									"adapter has capabilities not declared in manifest",
+								undeclared_capabilities: undeclared,
+								suggestion:
+									"Update manifest.json to declare these capabilities",
+							},
+						}),
+					);
+				}
+
+				// Check for duplicate provider name
+				if (this.providers.has(manifest.provider.name)) {
+					const existing = this.providers.get(manifest.provider.name);
+					log(
+						createLogEntry("ERROR", "provider_load_error", {
+							provider: manifest.provider.name,
+							details: {
+								reason: "duplicate provider name",
+								first_loaded_from: existing?.path,
+								attempted_from: providerDir,
+							},
+						}),
+					);
+					continue;
+				}
+
+				// Store loaded provider
+				const entry: import("../../types/provider").LoadedProviderEntry =
+					{
+						adapter,
+						manifest,
+						path: providerDir,
+					};
+
+				this.providers.set(manifest.provider.name, entry);
+
+				log(
+					createLogEntry("INFO", "provider_load_success", {
+						provider: manifest.provider.name,
+						details: { path: providerDir },
+					}),
+				);
+			} catch (error) {
+				log(
+					createLogEntry("ERROR", "provider_load_error", {
+						provider: providerDir,
+						details: {
+							reason: "unexpected error",
+							error:
+								error instanceof Error
+									? error.message
+									: String(error),
+						},
+					}),
+				);
+			}
+		}
+
+		log(
+			createLogEntry("INFO", "registry_init_complete", {
+				details: { loaded: this.providers.size },
+			}),
+		);
+	}
+
+	/**
+	 * Get a provider by name.
+	 * (T026, FR-016)
+	 *
+	 * @param name - Provider name from manifest
+	 * @returns LoadedProviderEntry if found, undefined otherwise
+	 */
+	getProvider(
+		name: string,
+	): import("../../types/provider").LoadedProviderEntry | undefined {
+		return this.providers.get(name);
+	}
+
+	/**
+	 * List all loaded providers.
+	 * (T027, FR-017)
+	 *
+	 * @returns Array of all LoadedProviderEntry instances
+	 */
+	listProviders(): import("../../types/provider").LoadedProviderEntry[] {
+		return Array.from(this.providers.values());
+	}
 }
 
 // =============================================================================
