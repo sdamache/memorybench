@@ -1,6 +1,9 @@
 import { sql } from "bun";
 import type { Chunk, Document, WeightedSearchResult } from "./types";
 
+const SCHEMA = "aqrag";
+const table = (name: string) => sql(`${SCHEMA}.${name}`);
+
 // Initialize database by creating tables
 export async function initDatabase() {
 	try {
@@ -29,7 +32,7 @@ export async function initDatabase() {
 // Document operations
 export async function insertDocument(content: string): Promise<Document> {
 	const [document] = await sql`
-    INSERT INTO documents (content)
+    INSERT INTO ${table("documents")} (content)
     VALUES (${content})
     RETURNING *
   `;
@@ -38,14 +41,14 @@ export async function insertDocument(content: string): Promise<Document> {
 
 export async function getDocument(id: number) {
 	const [document] = await sql`
-    SELECT * FROM documents WHERE id = ${id}
+    SELECT * FROM ${table("documents")} WHERE id = ${id}
   `;
 	return document;
 }
 
 export async function getAllDocuments() {
 	return await sql`
-    SELECT * FROM documents ORDER BY id DESC
+    SELECT * FROM ${table("documents")} ORDER BY id DESC
   `;
 }
 
@@ -58,14 +61,14 @@ export async function insertChunk(
 ): Promise<Chunk> {
 	// First insert the chunk
 	const [chunk] = await sql`
-    INSERT INTO chunks (document_id, content)
+    INSERT INTO ${table("chunks")} (document_id, content)
     VALUES (${documentId}, ${content})
     RETURNING *
   `;
 
 	// Then insert both embeddings
 	await sql`
-    INSERT INTO embeddings (chunk_id, embedding, is_question_embedding)
+    INSERT INTO ${table("embeddings")} (chunk_id, embedding, is_question_embedding)
     VALUES
       (${chunk.id}, ${JSON.stringify(chunkEmbedding)}::vector, false),
       (${chunk.id}, ${JSON.stringify(anticipatoryQuestionEmbeddings)}::vector, true)
@@ -79,9 +82,9 @@ export async function getAllChunks() {
     SELECT c.*,
            e_chunk.embedding as chunk_embedding,
            e_question.embedding as question_embedding
-    FROM chunks c
-    LEFT JOIN embeddings e_chunk ON c.id = e_chunk.chunk_id AND e_chunk.is_question_embedding = false
-    LEFT JOIN embeddings e_question ON c.id = e_question.chunk_id AND e_question.is_question_embedding = true
+    FROM ${table("chunks")} c
+    LEFT JOIN ${table("embeddings")} e_chunk ON c.id = e_chunk.chunk_id AND e_chunk.is_question_embedding = false
+    LEFT JOIN ${table("embeddings")} e_question ON c.id = e_question.chunk_id AND e_question.is_question_embedding = true
     ORDER BY c.id
   `;
 }
@@ -105,16 +108,16 @@ export async function findSimilarWeighted(
         c.content,
         e.embedding <-> ${JSON.stringify(embedding)}::vector as chunk_distance,
         ${clampedWeight} as chunk_weight
-      FROM chunks c
-      JOIN embeddings e ON c.id = e.chunk_id AND e.is_question_embedding = false
+      FROM ${table("chunks")} c
+      JOIN ${table("embeddings")} e ON c.id = e.chunk_id AND e.is_question_embedding = false
     ),
     question_similarities AS (
       SELECT
         c.id,
         e.embedding <-> ${JSON.stringify(embedding)}::vector as question_distance,
         ${questionWeight} as question_weight
-      FROM chunks c
-      JOIN embeddings e ON c.id = e.chunk_id AND e.is_question_embedding = true
+      FROM ${table("chunks")} c
+      JOIN ${table("embeddings")} e ON c.id = e.chunk_id AND e.is_question_embedding = true
     )
     SELECT
       cs.*,
