@@ -74,15 +74,8 @@ export async function cleanupIngested(
 		}
 	}
 
-	// Check if provider supports delete
-	if (!(await hasCapability(provider, "delete_memory"))) {
-		return {
-			deletedCount: 0,
-			errors: ["Provider does not support delete_memory operation"],
-		};
-	}
-
 	// Delete individually
+	// delete_memory is a required BaseProvider method, so we can call it directly
 	for (const id of ingestedIds) {
 		try {
 			await provider.delete_memory(scope, id);
