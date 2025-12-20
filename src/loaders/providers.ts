@@ -717,16 +717,17 @@ export function validateDeclaredOptionalMethods(
 	const optionalOps = manifest.capabilities.optional_operations;
 
 	// Check each optional operation declared as true
-	if (optionalOps.update_memory && !adapter.update_memory) {
+	// Use typeof check to ensure property is actually a function
+	if (optionalOps.update_memory && typeof adapter.update_memory !== "function") {
 		missing.push("update_memory");
 	}
-	if (optionalOps.list_memories && !adapter.list_memories) {
+	if (optionalOps.list_memories && typeof adapter.list_memories !== "function") {
 		missing.push("list_memories");
 	}
-	if (optionalOps.reset_scope && !adapter.reset_scope) {
+	if (optionalOps.reset_scope && typeof adapter.reset_scope !== "function") {
 		missing.push("reset_scope");
 	}
-	if (optionalOps.get_capabilities && !adapter.get_capabilities) {
+	if (optionalOps.get_capabilities && typeof adapter.get_capabilities !== "function") {
 		missing.push("get_capabilities");
 	}
 

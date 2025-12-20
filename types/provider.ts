@@ -345,38 +345,40 @@ export function isLegacyTemplate(obj: unknown): obj is TemplateType {
  * ```
  */
 export function validateScopeContext(scope: unknown): ScopeContext {
-	// Use the existing type guard from types/core.ts
-	if (!isScopeContext(scope)) {
-		// Provide detailed error message for debugging
-		const issues: string[] = [];
+	// Provide detailed error message for debugging
+	const issues: string[] = [];
 
-		if (typeof scope !== "object" || scope === null) {
-			throw new Error(
-				"Invalid ScopeContext: expected object, got " + typeof scope,
-			);
-		}
+	if (typeof scope !== "object" || scope === null) {
+		throw new Error(
+			"Invalid ScopeContext: expected object, got " + typeof scope,
+		);
+	}
 
-		const obj = scope as any;
+	const obj = scope as any;
 
-		if (!("user_id" in obj) || typeof obj.user_id !== "string") {
-			issues.push("missing or invalid user_id (expected string)");
-		}
-		if (!("run_id" in obj) || typeof obj.run_id !== "string") {
-			issues.push("missing or invalid run_id (expected string)");
-		}
-		if ("session_id" in obj && typeof obj.session_id !== "string") {
-			issues.push("invalid session_id (expected string)");
-		}
-		if ("namespace" in obj && typeof obj.namespace !== "string") {
-			issues.push("invalid namespace (expected string)");
-		}
+	// Validate required fields
+	if (!("user_id" in obj) || typeof obj.user_id !== "string") {
+		issues.push("missing or invalid user_id (expected string)");
+	}
+	if (!("run_id" in obj) || typeof obj.run_id !== "string") {
+		issues.push("missing or invalid run_id (expected string)");
+	}
 
+	// Validate optional fields - they must be string if present
+	if ("session_id" in obj && obj.session_id !== undefined && typeof obj.session_id !== "string") {
+		issues.push("invalid session_id (expected string or undefined)");
+	}
+	if ("namespace" in obj && obj.namespace !== undefined && typeof obj.namespace !== "string") {
+		issues.push("invalid namespace (expected string or undefined)");
+	}
+
+	if (issues.length > 0) {
 		throw new Error(
 			`Invalid ScopeContext: ${issues.join(", ")}. Expected { user_id: string, run_id: string, session_id?: string, namespace?: string }`,
 		);
 	}
 
-	return scope;
+	return scope as ScopeContext;
 }
 
 // =============================================================================
@@ -464,8 +466,8 @@ export class LegacyProviderAdapter implements BaseProvider {
 			score: result.score,
 		}));
 
-		// Apply limit if specified
-		return limit ? items.slice(0, limit) : items;
+		// Apply limit if specified (handle limit=0 correctly)
+		return limit !== undefined ? items.slice(0, limit) : items;
 	}
 
 	/**
