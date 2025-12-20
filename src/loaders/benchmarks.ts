@@ -94,14 +94,36 @@ export async function discoverBenchmarks(
 		benchmarkPaths.push(path.join(baseDir, file));
 	}
 
+	// De-duplicate: if a directory has both index.ts and manifest.json,
+	// prefer manifest.json to avoid duplicate loading
+	const pathsByDir = new Map<string, string[]>();
+	for (const filePath of benchmarkPaths) {
+		const dir = path.dirname(filePath);
+		if (!pathsByDir.has(dir)) {
+			pathsByDir.set(dir, []);
+		}
+		pathsByDir.get(dir)!.push(filePath);
+	}
+
+	const deduplicatedPaths: string[] = [];
+	for (const paths of pathsByDir.values()) {
+		if (paths.length === 1) {
+			deduplicatedPaths.push(paths[0]!);
+		} else {
+			// Prefer manifest.json over index.ts
+			const manifestPath = paths.find((p) => p.endsWith("manifest.json"));
+			deduplicatedPaths.push(manifestPath ?? paths[0]!);
+		}
+	}
+
 	log(
 		createLogEntry("info", "benchmark_discovery_complete", {
-			count: benchmarkPaths.length,
-			paths: benchmarkPaths,
+			count: deduplicatedPaths.length,
+			paths: deduplicatedPaths,
 		}),
 	);
 
-	return benchmarkPaths;
+	return deduplicatedPaths;
 }
 
 /**
