@@ -65,7 +65,7 @@ function parseJudgeResponse(content: string): EvaluationResult {
 			faithfulness: Math.max(0, Math.min(1, Number(parsed.faithfulness) || 0)),
 			reasoning: String(parsed.reasoning || "No reasoning provided"),
 			typeSpecificScore:
-				parsed.typeSpecificScore !== undefined
+				parsed.typeSpecificScore !== undefined && parsed.typeSpecificScore !== null
 					? Math.max(0, Math.min(1, Number(parsed.typeSpecificScore)))
 					: undefined,
 		};
