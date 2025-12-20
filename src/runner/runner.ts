@@ -84,7 +84,7 @@ export async function executeCase(
 		throw new Error(`Benchmark '${benchmarkName}' not found`);
 	}
 
-	const provider = providerEntry.providerInstance;
+	const provider = providerEntry.adapter;
 	const benchmark = benchmarkEntry.benchmark;
 
 	// Find the specific case

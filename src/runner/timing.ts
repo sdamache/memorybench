@@ -54,6 +54,11 @@ export async function timed<T>(
 			timestamp,
 		};
 
+		// Attach timing to the error object so callers can access it
+		if (error instanceof Error) {
+			(error as Error & { timing?: OperationTiming }).timing = timing;
+		}
+
 		// Re-throw the error with timing information attached
 		throw error;
 	}

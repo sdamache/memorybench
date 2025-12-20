@@ -146,7 +146,19 @@ export async function checkCapabilityCompatibility(
 	}
 
 	const requiredCapabilities = benchmark.benchmark.meta.required_capabilities;
-	const providerCapabilities = provider.providerInstance.get_capabilities();
+
+	// Get provider capabilities - handle async/optional get_capabilities()
+	let providerCapabilities;
+	if (provider.adapter.get_capabilities) {
+		providerCapabilities = await provider.adapter.get_capabilities();
+	} else {
+		// If get_capabilities not implemented, assume no capabilities
+		providerCapabilities = {
+			memory_operations: {},
+			search_capabilities: {},
+			metadata_support: {},
+		};
+	}
 
 	// Use existing checkProviderCompatibility from benchmarks loader
 	const compatible = checkProviderCompatibility(
