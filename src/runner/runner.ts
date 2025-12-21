@@ -143,8 +143,45 @@ export async function executeCase(
 }
 
 /**
+ * Create a concurrency pool for batched parallel execution.
+ * Processes items in batches respecting the concurrency limit.
+ *
+ * @param items - Array of items to process
+ * @param concurrency - Maximum parallel executions
+ * @param fn - Async function to execute for each item
+ * @returns Promise resolving to array of all results in original order
+ */
+async function createConcurrencyPool<T, R>(
+	items: T[],
+	concurrency: number,
+	fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+	const results: R[] = [];
+
+	// Process items in batches of size `concurrency`
+	for (let i = 0; i < items.length; i += concurrency) {
+		const batch = items.slice(i, i + concurrency);
+		const batchPromises = batch.map(item => fn(item));
+		const batchResults = await Promise.allSettled(batchPromises);
+
+		// Extract results or throw on rejection
+		for (const result of batchResults) {
+			if (result.status === "fulfilled") {
+				results.push(result.value);
+			} else {
+				// For executeCase, errors are caught and returned as error results
+				// So rejections here indicate a programming error
+				throw result.reason;
+			}
+		}
+	}
+
+	return results;
+}
+
+/**
  * Execute all cases for a provider/benchmark combination.
- * Runs cases sequentially (concurrency support added in Phase 5).
+ * Supports both sequential and concurrent execution.
  *
  * @param providerName - Provider to test
  * @param benchmarkName - Benchmark to run
@@ -167,12 +204,10 @@ export async function executeCases(
 
 	const benchmark = benchmarkEntry.benchmark;
 	const allCases = Array.from(benchmark.cases());
-	const results: RunCaseResult[] = [];
 
-	// Phase 3: Sequential execution only (concurrency=1)
-	// Phase 5 will add concurrent execution support
 	if (concurrency === 1) {
-		// Sequential execution
+		// Sequential execution for concurrency=1
+		const results: RunCaseResult[] = [];
 		for (const benchmarkCase of allCases) {
 			const result = await executeCase(
 				providerName,
@@ -182,21 +217,22 @@ export async function executeCases(
 			);
 			results.push(result);
 		}
+		return results;
 	} else {
-		// Concurrent execution (Phase 5 implementation placeholder)
-		// For now, fall back to sequential
-		for (const benchmarkCase of allCases) {
-			const result = await executeCase(
-				providerName,
-				benchmarkName,
-				benchmarkCase.id,
-				runId,
-			);
-			results.push(result);
-		}
+		// Concurrent execution using concurrency pool
+		return createConcurrencyPool(
+			allCases,
+			concurrency,
+			async (benchmarkCase) => {
+				return executeCase(
+					providerName,
+					benchmarkName,
+					benchmarkCase.id,
+					runId,
+				);
+			},
+		);
 	}
-
-	return results;
 }
 
 // =============================================================================

@@ -174,10 +174,11 @@ describe("US3: Concurrent Execution - Parallel Case Processing", () => {
 
 describe("Integration: Deterministic Ordering", () => {
 	test("should produce deterministic run plan ordering", async () => {
-		// Arrange - Use multiple providers to test alphabetical sorting
+		// Arrange - Use multiple benchmarks to test alphabetical sorting
+		// (Using benchmarks instead of providers since only quickstart-test is available)
 		const selection: RunSelection = {
-			providers: ["ContextualRetrieval", "AQRAG", "quickstart-test"], // Unsorted on purpose
-			benchmarks: ["RAG-template-benchmark"],
+			providers: ["quickstart-test"],
+			benchmarks: ["RAG-template-benchmark", "LongMemEval"], // Two benchmarks to test sorting
 			concurrency: 1,
 		};
 
@@ -197,19 +198,11 @@ describe("Integration: Deterministic Ordering", () => {
 			expect(entry1.eligible).toBe(entry2.eligible);
 		}
 
-		// Verify alphabetical ordering of providers
-		// Input: ["ContextualRetrieval", "AQRAG", "quickstart-test"]
-		// Expected sorted: ["AQRAG", "ContextualRetrieval", "quickstart-test"]
-		const providerNames = plan1.entries.map((e) => e.provider_name);
-		const uniqueProviders = [...new Set(providerNames)];
-		expect(uniqueProviders).toEqual([
-			"AQRAG",
-			"ContextualRetrieval",
-			"quickstart-test",
-		]);
-
+		// Verify alphabetical ordering of benchmarks
+		// Input: ["RAG-template-benchmark", "LongMemEval"]
+		// Expected sorted: ["LongMemEval", "RAG-template-benchmark"]
 		const benchmarkNames = plan1.entries.map((e) => e.benchmark_name);
 		const uniqueBenchmarks = [...new Set(benchmarkNames)];
-		expect(uniqueBenchmarks).toEqual(["RAG-template-benchmark"]);
+		expect(uniqueBenchmarks).toEqual(["LongMemEval", "RAG-template-benchmark"]);
 	});
 });
