@@ -297,7 +297,7 @@ export async function executeRunPlan(
 				entry.provider_name,
 				entry.benchmark_name,
 				plan.run_id,
-				1, // Sequential for Phase 3; Phase 5 will pass concurrency from selection
+				selection.concurrency, // Pass through concurrency setting from CLI
 			);
 			allResults.push(...caseResults);
 		} catch (error) {
