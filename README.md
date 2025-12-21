@@ -11,8 +11,80 @@ bun install
 bun run index.ts list benchmarks
 bun run index.ts list providers
 
-# Run a benchmark
-bun run index.ts --benchmarks RAG-template-benchmark --providers ContextualRetrieval
+# Run a single benchmark against a single provider
+bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benchmark
+
+# Run with concurrent execution for faster results
+bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benchmark --concurrency 4
+```
+
+## Running Benchmarks
+
+### Basic Evaluation
+
+Run a provider against a benchmark and get structured JSON results:
+
+```bash
+bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benchmark
+```
+
+Output includes:
+- **Run metadata**: `run_id`, `timestamp`, `selections`
+- **Execution plan**: Provider × benchmark combinations with capability gating
+- **Results**: Per-case results with status, scores, and timing data
+- **Summary**: Aggregated pass/fail/skip/error counts and total duration
+
+### Multiple Providers and Benchmarks
+
+Run multiple combinations in a single evaluation:
+
+```bash
+bun run index.ts eval \
+  --providers quickstart-test AQRAG \
+  --benchmarks RAG-template-benchmark LongMemEval
+```
+
+The runner creates a matrix of all combinations, automatically skipping incompatible pairs based on capability requirements.
+
+### Concurrent Execution
+
+Speed up evaluations by running cases in parallel:
+
+```bash
+bun run index.ts eval \
+  --providers quickstart-test \
+  --benchmarks RAG-template-benchmark \
+  --concurrency 4
+```
+
+This executes up to 4 benchmark cases simultaneously per provider/benchmark combination.
+
+### Understanding Output
+
+The `eval` command outputs structured JSON to stdout. Save it for later analysis:
+
+```bash
+bun run index.ts eval \
+  --providers quickstart-test \
+  --benchmarks RAG-template-benchmark \
+  > results.json
+```
+
+**Skip reasons** are included when providers lack required capabilities:
+
+```json
+{
+  "plan": {
+    "entries": [{
+      "provider_name": "quickstart-test",
+      "benchmark_name": "some-benchmark",
+      "eligible": false,
+      "skip_reason": {
+        "message": "Provider 'quickstart-test' lacks required capability: update_memory"
+      }
+    }]
+  }
+}
 ```
 
 ## Available Benchmarks

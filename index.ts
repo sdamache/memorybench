@@ -12,6 +12,8 @@ import {
 	formatValidationError,
 	loadAllProviders,
 } from "./src/loaders/providers";
+import { run } from "./src/runner/runner";
+import type { RunSelection } from "./src/runner/types";
 
 // Benchmark data registry
 const BENCHMARK_DATA: Record<
@@ -233,9 +235,82 @@ async function handleListProviders(jsonOutput: boolean): Promise<void> {
 	}
 }
 
+/**
+ * Handle the 'eval' subcommand - unified runner execution (T016-T017)
+ */
+async function handleEval(rawArgs: string[]): Promise<void> {
+	const providers: string[] = [];
+	const benchmarks: string[] = [];
+	let concurrency = 1;
+
+	// Parse arguments
+	for (let i = 0; i < rawArgs.length; i++) {
+		const arg = rawArgs[i];
+
+		if (arg === "--providers" || arg === "-p") {
+			i++;
+			while (i < rawArgs.length && rawArgs[i] && !rawArgs[i]!.startsWith("-")) {
+				providers.push(rawArgs[i]!);
+				i++;
+			}
+			i--;
+		} else if (arg === "--benchmarks" || arg === "-b") {
+			i++;
+			while (i < rawArgs.length && rawArgs[i] && !rawArgs[i]!.startsWith("-")) {
+				benchmarks.push(rawArgs[i]!);
+				i++;
+			}
+			i--;
+		} else if (arg === "--concurrency" || arg === "-c") {
+			i++;
+			if (i >= rawArgs.length || !rawArgs[i]) {
+				throw new Error(
+					"--concurrency requires a value. Usage: --concurrency <number>",
+				);
+			}
+			concurrency = parseInt(rawArgs[i]!, 10);
+			if (isNaN(concurrency) || concurrency < 1) {
+				throw new Error("--concurrency must be a positive integer");
+			}
+		}
+	}
+
+	// Validate required arguments
+	if (providers.length === 0) {
+		throw new Error(
+			"No providers specified. Use --providers to specify at least one provider.",
+		);
+	}
+
+	if (benchmarks.length === 0) {
+		throw new Error(
+			"No benchmarks specified. Use --benchmarks to specify at least one benchmark.",
+		);
+	}
+
+	// Build selection
+	const selection: RunSelection = {
+		providers,
+		benchmarks,
+		concurrency,
+	};
+
+	// Execute runner
+	const output = await run(selection);
+
+	// Output structured JSON to stdout
+	console.log(JSON.stringify(output, null, 2));
+}
+
 async function main(): Promise<void> {
 	try {
 		const rawArgs = Bun.argv.slice(2);
+
+		// Check for 'eval' subcommand (T016-T017)
+		if (rawArgs[0] === "eval") {
+			await handleEval(rawArgs.slice(1));
+			return;
+		}
 
 		// Check for 'list benchmarks' subcommand (T038)
 		if (rawArgs[0] === "list" && rawArgs[1] === "benchmarks") {
@@ -260,22 +335,23 @@ async function main(): Promise<void> {
 Memory Benchmark CLI
 
 Usage:
-  bun run index.ts --benchmarks <benchmark1> [benchmark2...] --providers <provider1> [provider2...]
+  bun run index.ts eval --providers <provider1> [provider2...] --benchmarks <benchmark1> [benchmark2...] [--concurrency N]
   bun run index.ts list benchmarks [--json]
   bun run index.ts list providers [--json]
 
 Commands:
+  eval                Run provider x benchmark matrix evaluation
+    --providers, -p   Provider names to evaluate (required)
+    --benchmarks, -b  Benchmark names to run (required)
+    --concurrency, -c Max parallel case executions (default: 1)
+
   list benchmarks     List all discovered benchmarks
   list providers      List all configured provider manifests
     --json            Output in JSON format for machine parsing
 
-Options:
-  --benchmarks, -b  Benchmark types to run (${Object.keys(BENCHMARK_DATA).join(", ")})
-  --providers, -p   Providers to test (${providerNames})
-
 Examples:
-  bun run index.ts --benchmarks RAG-template-benchmark --providers ContextualRetrieval AQRAG
-  bun run index.ts -b RAG-template-benchmark -p ContextualRetrieval
+  bun run index.ts eval --providers baseline --benchmarks RAG-template-benchmark
+  bun run index.ts eval -p baseline ContextualRetrieval -b RAG-template-benchmark --concurrency 4
   bun run index.ts list benchmarks
   bun run index.ts list benchmarks --json
   bun run index.ts list providers

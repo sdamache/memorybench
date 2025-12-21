@@ -19,7 +19,7 @@ This directory contains the RAG (Retrieval-Augmented Generation) provider implem
    docker run -d --name rag-postgres \
      -e POSTGRES_PASSWORD=postgres \
      -e POSTGRES_DB=rag_db \
-     -p 5433:5432 \
+     -p 5432:5432 \
      rag-postgres
    ```
 
@@ -29,7 +29,7 @@ This directory contains the RAG (Retrieval-Augmented Generation) provider implem
    docker exec -it rag-postgres psql -U postgres -d rag_db
 
    # Or connect from your host machine
-   PGPASSWORD=postgres psql -h localhost -p 5433 -U postgres -d rag_db
+   PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d rag_db
    ```
 
 ### Database Features
@@ -40,7 +40,7 @@ This directory contains the RAG (Retrieval-Augmented Generation) provider implem
   - Database: `rag_db`
   - Username: `postgres`
   - Password: `postgres`
-  - Port: `5433` (host) / `5432` (container)
+  - Port: `5432` (host) / `5432` (container)
 
 ### Container Management
 
@@ -61,7 +61,7 @@ docker logs rag-postgres
 ### Connection Details
 
 - **Host**: `localhost` (when running locally)
-- **Port**: `5433`
+- **Port**: `5432`
 - **Database**: `rag_db`
 - **Username**: `postgres`
 - **Password**: `postgres`

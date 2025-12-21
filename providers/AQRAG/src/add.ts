@@ -34,7 +34,7 @@ const processChunk = async (chunk: string, document: Document) => {
 	);
 
 	const { object } = await generateObject({
-		model: anthropic("claude-3-5-haiku"),
+		model: anthropic("claude-3-5-haiku-20241022"),
 		prompt: enhancedChunkPrompt,
 		schema: z.object({
 			enhancedChunk: z.string(),
