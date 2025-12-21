@@ -263,11 +263,14 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 			i--;
 		} else if (arg === "--concurrency" || arg === "-c") {
 			i++;
-			if (i < rawArgs.length && rawArgs[i]) {
-				concurrency = parseInt(rawArgs[i]!, 10);
-				if (isNaN(concurrency) || concurrency < 1) {
-					throw new Error("--concurrency must be a positive integer");
-				}
+			if (i >= rawArgs.length || !rawArgs[i]) {
+				throw new Error(
+					"--concurrency requires a value. Usage: --concurrency <number>",
+				);
+			}
+			concurrency = parseInt(rawArgs[i]!, 10);
+			if (isNaN(concurrency) || concurrency < 1) {
+				throw new Error("--concurrency must be a positive integer");
 			}
 		}
 	}

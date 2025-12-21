@@ -56,7 +56,8 @@ export function createScopeContext(
 
 /**
  * Execute a single benchmark case with timing capture.
- * Wraps the benchmark's run_case method to capture operation-level timings.
+ * Currently captures case-level timing; operation-level timing (per provider method)
+ * will be added in Phase 4 via timing wrapper.
  *
  * @param providerName - Provider to test
  * @param benchmarkName - Benchmark to run
