@@ -241,9 +241,13 @@ export function buildSummary(
  * Skips ineligible entries and continues execution even if some cases fail.
  *
  * @param plan - Previously built run plan
+ * @param selection - Original selection (needed for concurrency setting)
  * @returns Complete run output with results and summary
  */
-export async function executeRunPlan(plan: RunPlan): Promise<RunOutput> {
+export async function executeRunPlan(
+	plan: RunPlan,
+	selection: RunSelection,
+): Promise<RunOutput> {
 	const runStart = Date.now();
 	const allResults: RunCaseResult[] = [];
 
@@ -285,7 +289,7 @@ export async function executeRunPlan(plan: RunPlan): Promise<RunOutput> {
 	const selections: RunSelection = {
 		providers: providerNames,
 		benchmarks: benchmarkNames,
-		concurrency: 1, // Phase 3 default; Phase 5 will track this
+		concurrency: selection.concurrency, // Preserve original concurrency setting
 	};
 
 	return {
@@ -310,7 +314,7 @@ export async function run(selection: RunSelection): Promise<RunOutput> {
 	const plan = await buildRunPlan(selection);
 
 	// 2. Execute the plan
-	const output = await executeRunPlan(plan);
+	const output = await executeRunPlan(plan, selection);
 
 	return output;
 }

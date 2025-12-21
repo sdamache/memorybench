@@ -13,8 +13,8 @@
 		},
 		"optional_operations": {
 			"update_memory": false,
-			"list_memories": true,
-			"reset_scope": true,
+			"list_memories": false,
+			"reset_scope": false,
 			"get_capabilities": false
 		},
 		"system_flags": {

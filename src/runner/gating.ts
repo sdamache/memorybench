@@ -66,7 +66,7 @@ export async function resolveBenchmarks(
 	const registry = BenchmarkRegistry.getInstance();
 	await registry.initialize();
 
-	const available = registry.listBenchmarks().map((b) => b.benchmark.meta.name);
+	const available = registry.list().map((b) => b.benchmark.meta.name);
 	const missing: string[] = [];
 
 	for (const name of benchmarkNames) {
