@@ -43,6 +43,9 @@ evaluations/
 # Checkpoints
 checkpoints/
 
+# Run outputs (Issue 008: checkpoint-resume)
+runs/
+
 
 .claude/*
 .specify/*
