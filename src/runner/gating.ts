@@ -152,12 +152,9 @@ export async function checkCapabilityCompatibility(
 	if (provider.adapter.get_capabilities) {
 		providerCapabilities = await provider.adapter.get_capabilities();
 	} else {
-		// If get_capabilities not implemented, assume no capabilities
-		providerCapabilities = {
-			memory_operations: {},
-			search_capabilities: {},
-			metadata_support: {},
-		};
+		// If get_capabilities not implemented, fall back to manifest capabilities
+		// This handles legacy providers that don't implement BaseProvider.get_capabilities()
+		providerCapabilities = provider.manifest.capabilities;
 	}
 
 	// Use existing checkProviderCompatibility from benchmarks loader
