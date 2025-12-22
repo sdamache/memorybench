@@ -34,6 +34,7 @@ import {
 	buildRunManifest,
 	computeManifestHash,
 	buildMetricsSummary,
+	readExistingResults,
 	type ProviderInfo,
 	type BenchmarkInfo,
 	type ResultsWriter,
@@ -441,16 +442,22 @@ export async function executeRunPlan(
 		}
 	}
 
-	// Build and write run manifest
-	const manifest = await buildRunManifest(
-		plan.run_id,
-		plan.timestamp,
-		selection,
-		plan,
-		providers,
-		benchmarks,
-	);
-	await writer.writeManifest(manifest);
+	// Build and write run manifest (only if it doesn't already exist from original run)
+	// On resume, preserve the original manifest to keep reproducibility metadata stable
+	const manifestPath = `${writer.runDir}/run_manifest.json`;
+	const manifestExists = await Bun.file(manifestPath).exists();
+
+	if (!manifestExists) {
+		const manifest = await buildRunManifest(
+			plan.run_id,
+			plan.timestamp,
+			selection,
+			plan,
+			providers,
+			benchmarks,
+		);
+		await writer.writeManifest(manifest);
+	}
 
 	// Execute only eligible entries
 	for (const entry of eligibleEntries) {
@@ -482,11 +489,26 @@ export async function executeRunPlan(
 	const summary = buildSummary(allResults, plan.skipped_count, totalDurationMs);
 
 	// Generate and write metrics summary
-	const resultRecords: ResultRecord[] = allResults.map((result) => ({
+	// On resume, include existing results from results.jsonl to avoid partial summaries
+	const existingResults = await readExistingResults(writer.runDir);
+	const newResultRecords: ResultRecord[] = allResults.map((result) => ({
 		run_id: plan.run_id,
 		...result,
 	}));
-	const metricsSummary = buildMetricsSummary(plan.run_id, resultRecords);
+
+	// Combine existing and new results, deduplicating by case_id + provider + benchmark
+	const resultMap = new Map<string, ResultRecord>();
+	for (const result of existingResults) {
+		const key = `${result.provider_name}:${result.benchmark_name}:${result.case_id}`;
+		resultMap.set(key, result);
+	}
+	for (const result of newResultRecords) {
+		const key = `${result.provider_name}:${result.benchmark_name}:${result.case_id}`;
+		resultMap.set(key, result); // New results overwrite existing (shouldn't happen, but just in case)
+	}
+
+	const allResultRecords = Array.from(resultMap.values());
+	const metricsSummary = buildMetricsSummary(plan.run_id, allResultRecords);
 	await writer.writeSummary(metricsSummary);
 
 	// Close writer to flush pending writes

@@ -27,6 +27,7 @@ export {
 	getRunDir,
 	getGitInfo,
 	getEnvironmentInfo,
+	readExistingResults,
 } from "./writer";
 
 // Export summary functions

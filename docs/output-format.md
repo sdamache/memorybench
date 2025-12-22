@@ -183,9 +183,14 @@ interface ResultRecord {
 {"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"RAG-template-benchmark","case_id":"rag_001","status":"fail","scores":{"precision":0,"retrieval_count":0,"top_score":0},"duration_ms":103}
 ```
 
-**Error case:**
+**Failing case with error details in artifacts:**
 ```json
 {"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"LongMemEval","case_id":"118b2229","status":"fail","scores":{"correctness":0,"faithfulness":0,"retrieval_precision":0,"retrieval_recall":0,"retrieval_f1":0},"duration_ms":200,"artifacts":{"generatedAnswer":"I don't have enough information to answer this question.","reasoning":"Judge error: 404 {\"error\":{\"code\":404,\"message\":\"Publisher Model not found.\",\"status\":\"NOT_FOUND\"}}","ingestedCount":45,"retrievedCount":0}}
+```
+
+**Error case (execution failed):**
+```json
+{"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"LongMemEval","case_id":"118b2229","status":"error","scores":{},"duration_ms":50,"error":{"message":"Provider initialization failed: Database connection timeout","type":"ConnectionError"}}
 ```
 
 ### Processing JSONL Files

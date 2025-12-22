@@ -187,6 +187,33 @@ export function computeManifestHash(manifest: unknown): string {
  * @param benchmarks - Benchmark metadata
  * @returns Complete run manifest
  */
+/**
+ * Read existing results from a results.jsonl file
+ *
+ * @param runDir - Directory containing results.jsonl
+ * @returns Array of result records, or empty array if file doesn't exist
+ */
+export async function readExistingResults(runDir: string): Promise<ResultRecord[]> {
+	const resultsPath = join(runDir, "results.jsonl");
+
+	try {
+		const file = Bun.file(resultsPath);
+		const exists = await file.exists();
+
+		if (!exists) {
+			return [];
+		}
+
+		const content = await file.text();
+		const lines = content.trim().split("\n").filter(line => line.length > 0);
+
+		return lines.map(line => JSON.parse(line) as ResultRecord);
+	} catch (error) {
+		console.warn(`Failed to read existing results from ${resultsPath}:`, error);
+		return [];
+	}
+}
+
 export async function buildRunManifest(
 	runId: string,
 	timestamp: string,
