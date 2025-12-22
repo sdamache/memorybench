@@ -92,13 +92,13 @@ interface EnvironmentInfo {
   "git_commit": "ff05810537391f301d492a5c4761605428b6e581",
   "git_branch": "009-results-writer",
   "selections": {
-    "providers": ["quickstart-test"],
+    "providers": ["LocalBaseline"],
     "benchmarks": ["RAG-template-benchmark"],
     "concurrency": 1
   },
   "providers": [
     {
-      "name": "quickstart-test",
+      "name": "LocalBaseline",
       "version": "1.0.0",
       "manifest_hash": "0e7a8d7add45784cd8ce0e373a9e4ace32371a81668b9142857dfbce1ebc55f8"
     }
@@ -120,7 +120,7 @@ interface EnvironmentInfo {
   "cli_args": [
     "eval",
     "--providers",
-    "quickstart-test",
+    "LocalBaseline",
     "--benchmarks",
     "RAG-template-benchmark",
     "--concurrency",
@@ -175,22 +175,22 @@ interface ResultRecord {
 
 **Passing case:**
 ```json
-{"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"LongMemEval","case_id":"e47becba","status":"pass","scores":{"correctness":0.95,"faithfulness":0.92,"retrieval_precision":0.88,"retrieval_recall":0.91,"retrieval_f1":0.89},"duration_ms":1740,"artifacts":{"generatedAnswer":"The answer is 42","ingestedCount":53,"retrievedCount":5}}
+{"run_id":"run_1766388833350_hpq76ud","provider_name":"LocalBaseline","benchmark_name":"LongMemEval","case_id":"e47becba","status":"pass","scores":{"correctness":0.95,"faithfulness":0.92,"retrieval_precision":0.88,"retrieval_recall":0.91,"retrieval_f1":0.89},"duration_ms":1740,"artifacts":{"generatedAnswer":"The answer is 42","ingestedCount":53,"retrievedCount":5}}
 ```
 
 **Failing case:**
 ```json
-{"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"RAG-template-benchmark","case_id":"rag_001","status":"fail","scores":{"precision":0,"retrieval_count":0,"top_score":0},"duration_ms":103}
+{"run_id":"run_1766388833350_hpq76ud","provider_name":"LocalBaseline","benchmark_name":"RAG-template-benchmark","case_id":"rag_001","status":"fail","scores":{"precision":0,"retrieval_count":0,"top_score":0},"duration_ms":103}
 ```
 
 **Failing case with error details in artifacts:**
 ```json
-{"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"LongMemEval","case_id":"118b2229","status":"fail","scores":{"correctness":0,"faithfulness":0,"retrieval_precision":0,"retrieval_recall":0,"retrieval_f1":0},"duration_ms":200,"artifacts":{"generatedAnswer":"I don't have enough information to answer this question.","reasoning":"Judge error: 404 {\"error\":{\"code\":404,\"message\":\"Publisher Model not found.\",\"status\":\"NOT_FOUND\"}}","ingestedCount":45,"retrievedCount":0}}
+{"run_id":"run_1766388833350_hpq76ud","provider_name":"LocalBaseline","benchmark_name":"LongMemEval","case_id":"118b2229","status":"fail","scores":{"correctness":0,"faithfulness":0,"retrieval_precision":0,"retrieval_recall":0,"retrieval_f1":0},"duration_ms":200,"artifacts":{"generatedAnswer":"I don't have enough information to answer this question.","reasoning":"Judge error: 404 {\"error\":{\"code\":404,\"message\":\"Publisher Model not found.\",\"status\":\"NOT_FOUND\"}}","ingestedCount":45,"retrievedCount":0}}
 ```
 
 **Error case (execution failed):**
 ```json
-{"run_id":"run_1766388833350_hpq76ud","provider_name":"quickstart-test","benchmark_name":"LongMemEval","case_id":"118b2229","status":"error","scores":{},"duration_ms":50,"error":{"message":"Provider initialization failed: Database connection timeout","type":"ConnectionError"}}
+{"run_id":"run_1766388833350_hpq76ud","provider_name":"LocalBaseline","benchmark_name":"LongMemEval","case_id":"118b2229","status":"error","scores":{},"duration_ms":50,"error":{"message":"Provider initialization failed: Database connection timeout","type":"ConnectionError"}}
 ```
 
 ### Processing JSONL Files
@@ -290,7 +290,7 @@ interface CombinationSummary {
   },
   "by_combination": [
     {
-      "provider_name": "quickstart-test",
+      "provider_name": "LocalBaseline",
       "benchmark_name": "RAG-template-benchmark",
       "counts": {
         "cases": 3,
