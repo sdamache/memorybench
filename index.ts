@@ -338,7 +338,13 @@ async function handleExplore(rawArgs: string[]): Promise<void> {
 			runId = rawArgs[i];
 		} else if (arg === "--port") {
 			i++;
+			if (i >= rawArgs.length || !rawArgs[i]) {
+				throw new Error("--port requires a value. Usage: --port <number>");
+			}
 			port = Number.parseInt(rawArgs[i]!, 10);
+			if (Number.isNaN(port) || port < 1 || port > 65535) {
+				throw new Error("--port must be an integer between 1 and 65535");
+			}
 		}
 	}
 
