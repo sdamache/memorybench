@@ -237,9 +237,12 @@ export class RetryExecutor {
 				const classified = classifyError(error);
 				lastError = classified;
 
+				// Calculate delay once (before recording and sleeping)
+				// This ensures the delay recorded in history matches the actual delay slept
+				const delay = calculateDelay(attempt, policy);
+
 				// Record attempt (for retries, not the initial attempt)
 				if (attempt > 0) {
-					const delay = attempt > 0 ? calculateDelay(attempt - 1, policy) : undefined;
 					retryHistory.push({
 						attempt,
 						error_type: classified.category,
@@ -269,8 +272,7 @@ export class RetryExecutor {
 					};
 				}
 
-				// Calculate delay and wait before retry
-				const delay = calculateDelay(attempt, policy);
+				// Wait before retry using the delay calculated above
 				await sleep(delay);
 			}
 		}

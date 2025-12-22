@@ -295,7 +295,8 @@ export class CheckpointManager {
 				...checkpoint.completed,
 				[caseKey]: completedCase,
 			},
-			completed_count: checkpoint.completed_count + 1,
+			// Only increment if this is a new case (not already completed)
+		completed_count: checkpoint.completed_count + (caseKey in checkpoint.completed ? 0 : 1),
 		};
 
 		// Write atomically
