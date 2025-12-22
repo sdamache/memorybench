@@ -29,6 +29,17 @@ import type {
 	OperationTiming,
 	Checkpoint,
 } from "./types";
+import {
+	createResultsWriter,
+	buildRunManifest,
+	computeManifestHash,
+	buildMetricsSummary,
+	readExistingResults,
+	type ProviderInfo,
+	type BenchmarkInfo,
+	type ResultsWriter,
+	type ResultRecord,
+} from "../results";
 
 // =============================================================================
 // Scope Context Creation
@@ -202,6 +213,7 @@ async function createConcurrencyPool<T, R>(
  * @param runId - Unique run identifier
  * @param concurrency - Max parallel case executions (default: 1 = sequential)
  * @param checkpoint - Optional checkpoint for recording progress
+ * @param writer - Results writer for appending case results incrementally
  * @returns Array of case results
  */
 export async function executeCases(
@@ -210,6 +222,7 @@ export async function executeCases(
 	runId: string,
 	concurrency: number = 1,
 	checkpoint?: Checkpoint | null,
+	writer?: ResultsWriter,
 ): Promise<{ results: RunCaseResult[]; checkpoint: Checkpoint | null }> {
 	const benchmarkRegistry = BenchmarkRegistry.getInstance();
 	const benchmarkEntry = benchmarkRegistry.get(benchmarkName);
@@ -243,6 +256,15 @@ export async function executeCases(
 			);
 			results.push(result);
 
+			// Append result to JSONL file immediately
+			if (writer) {
+				const resultRecord: ResultRecord = {
+					run_id: runId,
+					...result,
+				};
+				await writer.appendResult(resultRecord);
+			}
+
 			// Record checkpoint after each case
 			if (currentCheckpoint) {
 				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
@@ -256,26 +278,39 @@ export async function executeCases(
 		return { results, checkpoint: currentCheckpoint };
 	} else {
 		// Concurrent execution using concurrency pool
-		// Note: Checkpoint recording for concurrent execution happens at batch boundaries
+		// Append results immediately after each case completes for durability
 		const results = await createConcurrencyPool(
 			casesToRun,
 			concurrency,
 			async (benchmarkCase) => {
-				return executeCase(
+				const result = await executeCase(
 					providerName,
 					benchmarkName,
 					benchmarkCase.id,
 					runId,
 				);
+
+				// Append result immediately to JSONL file (durability during concurrent execution)
+				if (writer) {
+					const resultRecord: ResultRecord = {
+						run_id: runId,
+						...result,
+					};
+					await writer.appendResult(resultRecord);
+				}
+
+				return result;
 			},
 		);
 
-		// Record all checkpoints after batch completes
+		// Record checkpoints after batch completes
+		// (Checkpoints are less critical for durability than results)
 		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
 		if (checkpoint) {
 			for (let i = 0; i < results.length; i++) {
 				const result = results[i];
 				const benchmarkCase = casesToRun[i];
+
 				if (result && benchmarkCase && currentCheckpoint) {
 					const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
 					currentCheckpoint = await checkpointManager.recordCompletion(
@@ -370,6 +405,60 @@ export async function executeRunPlan(
 		);
 	}
 
+	// Create results writer and write manifest
+	const writer = await createResultsWriter(plan.run_id);
+
+	// Collect provider metadata with manifest hashes
+	const providerRegistry = await ProviderRegistry.getInstance();
+	const providers: ProviderInfo[] = [];
+	for (const entry of eligibleEntries) {
+		const existing = providers.find((p) => p.name === entry.provider_name);
+		if (!existing) {
+			const providerEntry = providerRegistry.getProvider(entry.provider_name);
+			if (providerEntry) {
+				providers.push({
+					name: providerEntry.manifest.provider.name,
+					version: providerEntry.manifest.provider.version,
+					manifest_hash: computeManifestHash(providerEntry.manifest),
+				});
+			}
+		}
+	}
+
+	// Collect benchmark metadata
+	const benchmarks: BenchmarkInfo[] = [];
+	for (const entry of eligibleEntries) {
+		const existing = benchmarks.find((b) => b.name === entry.benchmark_name);
+		if (!existing) {
+			const benchmarkEntry = benchmarkRegistry.get(entry.benchmark_name);
+			if (benchmarkEntry) {
+				const caseCount = Array.from(benchmarkEntry.benchmark.cases()).length;
+				benchmarks.push({
+					name: entry.benchmark_name,
+					version: "1.0.0", // TODO: Get from benchmark metadata when available
+					case_count: caseCount,
+				});
+			}
+		}
+	}
+
+	// Build and write run manifest (only if it doesn't already exist from original run)
+	// On resume, preserve the original manifest to keep reproducibility metadata stable
+	const manifestPath = `${writer.runDir}/run_manifest.json`;
+	const manifestExists = await Bun.file(manifestPath).exists();
+
+	if (!manifestExists) {
+		const manifest = await buildRunManifest(
+			plan.run_id,
+			plan.timestamp,
+			selection,
+			plan,
+			providers,
+			benchmarks,
+		);
+		await writer.writeManifest(manifest);
+	}
+
 	// Execute only eligible entries
 	for (const entry of eligibleEntries) {
 		try {
@@ -379,6 +468,7 @@ export async function executeRunPlan(
 				plan.run_id,
 				selection.concurrency,
 				checkpoint,
+				writer,
 			);
 			allResults.push(...caseResults);
 			// Update checkpoint for next iteration
@@ -395,8 +485,34 @@ export async function executeRunPlan(
 	const runEnd = Date.now();
 	const totalDurationMs = runEnd - runStart;
 
-	// Build summary
+	// Build console summary
 	const summary = buildSummary(allResults, plan.skipped_count, totalDurationMs);
+
+	// Generate and write metrics summary
+	// On resume, include existing results from results.jsonl to avoid partial summaries
+	const existingResults = await readExistingResults(writer.runDir);
+	const newResultRecords: ResultRecord[] = allResults.map((result) => ({
+		run_id: plan.run_id,
+		...result,
+	}));
+
+	// Combine existing and new results, deduplicating by case_id + provider + benchmark
+	const resultMap = new Map<string, ResultRecord>();
+	for (const result of existingResults) {
+		const key = `${result.provider_name}:${result.benchmark_name}:${result.case_id}`;
+		resultMap.set(key, result);
+	}
+	for (const result of newResultRecords) {
+		const key = `${result.provider_name}:${result.benchmark_name}:${result.case_id}`;
+		resultMap.set(key, result); // New results overwrite existing (shouldn't happen, but just in case)
+	}
+
+	const allResultRecords = Array.from(resultMap.values());
+	const metricsSummary = buildMetricsSummary(plan.run_id, allResultRecords);
+	await writer.writeSummary(metricsSummary);
+
+	// Close writer to flush pending writes
+	await writer.close();
 
 	// Reconstruct selections from plan
 	const providerNames = [

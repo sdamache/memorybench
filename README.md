@@ -61,7 +61,7 @@ This executes up to 4 benchmark cases simultaneously per provider/benchmark comb
 
 ### Understanding Output
 
-The `eval` command outputs structured JSON to stdout. Save it for later analysis:
+The `eval` command outputs structured JSON to stdout and writes persistent results to `runs/{run_id}/`. Save stdout for immediate inspection:
 
 ```bash
 bun run index.ts eval \
@@ -86,6 +86,34 @@ bun run index.ts eval \
   }
 }
 ```
+
+### Results Output Files
+
+Each evaluation run creates a timestamped directory under `runs/` with three machine-parseable files:
+
+```
+runs/run_1766388833350_hpq76ud/
+├── run_manifest.json       # Run metadata (git commit, CLI args, environment)
+├── results.jsonl           # Per-case results (appended incrementally)
+└── metrics_summary.json    # Aggregated metrics by provider×benchmark
+```
+
+**Key features:**
+- **Reproducibility**: `run_manifest.json` captures git commit, environment info, and CLI arguments
+- **Durability**: `results.jsonl` is appended after each case completes, surviving interruptions
+- **Analysis-ready**: JSONL format for easy streaming and filtering with tools like `jq`
+
+**Example - Extract failed cases:**
+```bash
+cat runs/run_*/results.jsonl | jq 'select(.status == "fail")'
+```
+
+**Example - Calculate average scores:**
+```bash
+cat runs/run_*/results.jsonl | jq -s 'map(.scores.correctness) | add / length'
+```
+
+See [docs/output-format.md](docs/output-format.md) for complete schema documentation and examples.
 
 ## Available Benchmarks
 
