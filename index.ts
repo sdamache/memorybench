@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { BenchmarkRegistry, BenchmarkType } from "./benchmarks";
 import { ragBenchmarkData } from "./benchmarks";
 import type { TemplateType } from "./providers/_template";
@@ -269,7 +270,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 					"--concurrency requires a value. Usage: --concurrency <number>",
 				);
 			}
-			concurrency = parseInt(rawArgs[i]!, 10);
+			concurrency = Number.parseInt(rawArgs[i]!, 10);
 			if (isNaN(concurrency) || concurrency < 1) {
 				throw new Error("--concurrency must be a positive integer");
 			}
@@ -321,6 +322,59 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 	console.log(JSON.stringify(output, null, 2));
 }
 
+/**
+ * Handle the 'explore' subcommand
+ */
+async function handleExplore(rawArgs: string[]): Promise<void> {
+	let runId: string | undefined;
+	let port = 3000;
+
+	// Parse arguments
+	for (let i = 0; i < rawArgs.length; i++) {
+		const arg = rawArgs[i];
+
+		if (arg === "--run" || arg === "-r") {
+			i++;
+			runId = rawArgs[i];
+		} else if (arg === "--port") {
+			i++;
+			port = Number.parseInt(rawArgs[i]!, 10);
+		}
+	}
+
+	if (!runId) {
+		// If no run ID provided, list runs and ask user to provide one
+		const runsDir = join(process.cwd(), "runs");
+		const { readdir } = await import("node:fs/promises");
+		try {
+			const entries = await readdir(runsDir, { withFileTypes: true });
+			const runs = entries
+				.filter((e) => e.isDirectory() && e.name.startsWith("run_"))
+				.map((e) => e.name)
+				.sort()
+				.reverse();
+
+			if (runs.length === 0) {
+				console.log("\nNo runs found in 'runs/' directory.");
+				return;
+			}
+
+			console.log("\nAvailable runs:");
+			for (const run of runs) {
+				console.log(`  - ${run}`);
+			}
+			console.log("\nUsage: bun run index.ts explore --run <run_id>");
+			return;
+		} catch (e) {
+			console.log("\nCould not find 'runs/' directory.");
+			return;
+		}
+	}
+
+	const { startExplorer } = await import("./src/explorer");
+	await startExplorer(runId, port);
+}
+
 async function main(): Promise<void> {
 	try {
 		const rawArgs = Bun.argv.slice(2);
@@ -328,6 +382,12 @@ async function main(): Promise<void> {
 		// Check for 'eval' subcommand (T016-T017)
 		if (rawArgs[0] === "eval") {
 			await handleEval(rawArgs.slice(1));
+			return;
+		}
+
+		// Check for 'explore' subcommand
+		if (rawArgs[0] === "explore") {
+			await handleExplore(rawArgs.slice(1));
 			return;
 		}
 
@@ -355,6 +415,7 @@ Memory Benchmark CLI
 
 Usage:
   bun run index.ts eval --providers <provider1> [provider2...] --benchmarks <benchmark1> [benchmark2...] [--concurrency N]
+  bun run index.ts explore --run <run_id> [--port N]
   bun run index.ts list benchmarks [--json]
   bun run index.ts list providers [--json]
 
@@ -364,6 +425,10 @@ Commands:
     --benchmarks, -b  Benchmark names to run (required)
     --concurrency, -c Max parallel case executions (default: 1)
 
+  explore             Launch the interactive results explorer
+    --run, -r         Run ID to visualize (e.g., run_1735000000000_abc)
+    --port            Port to run the explorer on (default: 3000)
+
   list benchmarks     List all discovered benchmarks
   list providers      List all configured provider manifests
     --json            Output in JSON format for machine parsing
@@ -371,6 +436,7 @@ Commands:
 Examples:
   bun run index.ts eval --providers baseline --benchmarks RAG-template-benchmark
   bun run index.ts eval -p baseline ContextualRetrieval -b RAG-template-benchmark --concurrency 4
+  bun run index.ts explore --run run_1766317324765_e904n0d
   bun run index.ts list benchmarks
   bun run index.ts list benchmarks --json
   bun run index.ts list providers
