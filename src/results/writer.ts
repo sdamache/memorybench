@@ -81,6 +81,12 @@ export async function getGitInfo(): Promise<{
 			stderr: "ignore",
 		});
 		const commitText = await new Response(commitProc.stdout).text();
+		await commitProc.exited; // Wait for process to exit
+
+		// Check exit code and non-empty output
+		if (commitProc.exitCode !== 0 || !commitText.trim()) {
+			return {};
+		}
 		const git_commit = commitText.trim();
 
 		// Get branch name
@@ -89,6 +95,12 @@ export async function getGitInfo(): Promise<{
 			stderr: "ignore",
 		});
 		const branchText = await new Response(branchProc.stdout).text();
+		await branchProc.exited; // Wait for process to exit
+
+		// Check exit code and non-empty output
+		if (branchProc.exitCode !== 0 || !branchText.trim()) {
+			return { git_commit }; // Return commit if we got it, but no branch
+		}
 		const git_branch = branchText.trim();
 
 		return { git_commit, git_branch };
@@ -235,9 +247,9 @@ export async function createResultsWriter(
 ): Promise<ResultsWriter> {
 	const writer = new ResultsWriterImpl(runId, baseDir);
 
-	// Ensure run directory exists
+	// Ensure run directory exists by writing .gitkeep with createPath
 	const runDir = writer.runDir;
-	await Bun.write(join(runDir, ".gitkeep"), "");
+	await Bun.write(join(runDir, ".gitkeep"), "", { createPath: true });
 
 	return writer;
 }
