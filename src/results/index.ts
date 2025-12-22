@@ -28,3 +28,10 @@ export {
 	getGitInfo,
 	getEnvironmentInfo,
 } from "./writer";
+
+// Export summary functions
+export {
+	buildMetricsSummary,
+	groupResultsByCombination,
+	calculateScoreAverages,
+} from "./summarize";

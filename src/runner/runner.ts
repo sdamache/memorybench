@@ -33,6 +33,7 @@ import {
 	createResultsWriter,
 	buildRunManifest,
 	computeManifestHash,
+	buildMetricsSummary,
 	type ProviderInfo,
 	type BenchmarkInfo,
 	type ResultsWriter,
@@ -477,8 +478,19 @@ export async function executeRunPlan(
 	const runEnd = Date.now();
 	const totalDurationMs = runEnd - runStart;
 
-	// Build summary
+	// Build console summary
 	const summary = buildSummary(allResults, plan.skipped_count, totalDurationMs);
+
+	// Generate and write metrics summary
+	const resultRecords: ResultRecord[] = allResults.map((result) => ({
+		run_id: plan.run_id,
+		...result,
+	}));
+	const metricsSummary = buildMetricsSummary(plan.run_id, resultRecords);
+	await writer.writeSummary(metricsSummary);
+
+	// Close writer to flush pending writes
+	await writer.close();
 
 	// Reconstruct selections from plan
 	const providerNames = [
