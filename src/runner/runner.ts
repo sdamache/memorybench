@@ -276,43 +276,47 @@ export async function executeCases(
 		return { results, checkpoint: currentCheckpoint };
 	} else {
 		// Concurrent execution using concurrency pool
-		// Note: Checkpoint recording for concurrent execution happens at batch boundaries
+		// Append results immediately after each case completes for durability
 		const results = await createConcurrencyPool(
 			casesToRun,
 			concurrency,
 			async (benchmarkCase) => {
-				return executeCase(
+				const result = await executeCase(
 					providerName,
 					benchmarkName,
 					benchmarkCase.id,
 					runId,
 				);
+
+				// Append result immediately to JSONL file (durability during concurrent execution)
+				if (writer) {
+					const resultRecord: ResultRecord = {
+						run_id: runId,
+						...result,
+					};
+					await writer.appendResult(resultRecord);
+				}
+
+				return result;
 			},
 		);
 
-		// Append all results and record checkpoints after batch completes
+		// Record checkpoints after batch completes
+		// (Checkpoints are less critical for durability than results)
 		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
-		for (let i = 0; i < results.length; i++) {
-			const result = results[i];
-			const benchmarkCase = casesToRun[i];
+		if (checkpoint) {
+			for (let i = 0; i < results.length; i++) {
+				const result = results[i];
+				const benchmarkCase = casesToRun[i];
 
-			// Append result to JSONL file
-			if (result && writer) {
-				const resultRecord: ResultRecord = {
-					run_id: runId,
-					...result,
-				};
-				await writer.appendResult(resultRecord);
-			}
-
-			// Record checkpoint
-			if (result && benchmarkCase && currentCheckpoint) {
-				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
-				currentCheckpoint = await checkpointManager.recordCompletion(
-					currentCheckpoint,
-					caseKey,
-					result.status,
-				);
+				if (result && benchmarkCase && currentCheckpoint) {
+					const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
+					currentCheckpoint = await checkpointManager.recordCompletion(
+						currentCheckpoint,
+						caseKey,
+						result.status,
+					);
+				}
 			}
 		}
 

@@ -134,15 +134,39 @@ export function getEnvironmentInfo(): EnvironmentInfo {
 // =============================================================================
 
 /**
+ * Recursively sort all object keys for canonical JSON representation.
+ * Ensures deterministic ordering at all nesting levels.
+ *
+ * @param obj - Object to canonicalize
+ * @returns Object with recursively sorted keys
+ */
+function canonicalize(obj: unknown): unknown {
+	if (obj === null || typeof obj !== "object") {
+		return obj;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map(canonicalize);
+	}
+
+	// Sort object keys and recursively canonicalize values
+	const sorted: Record<string, unknown> = {};
+	for (const key of Object.keys(obj).sort()) {
+		sorted[key] = canonicalize((obj as Record<string, unknown>)[key]);
+	}
+	return sorted;
+}
+
+/**
  * Compute SHA-256 hash of a manifest object.
- * Uses canonical JSON representation (sorted keys) for deterministic hashing.
+ * Uses canonical JSON representation (sorted keys recursively) for deterministic hashing.
  *
  * @param manifest - Manifest object to hash
  * @returns SHA-256 hash as hex string
  */
 export function computeManifestHash(manifest: unknown): string {
-	// Convert to canonical JSON (sorted keys recursively)
-	const canonical = JSON.stringify(manifest, Object.keys(manifest as object).sort());
+	// Convert to canonical form with recursively sorted keys
+	const canonical = JSON.stringify(canonicalize(manifest));
 
 	// Compute SHA-256 hash
 	return createHash("sha256").update(canonical).digest("hex");
