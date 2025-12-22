@@ -1,7 +1,7 @@
 {
 	"manifest_version": "1",
 	"provider": {
-		"name": "quickstart-test",
+		"name": "LocalBaseline",
 		"type": "hybrid",
 		"version": "1.0.0"
 	},
