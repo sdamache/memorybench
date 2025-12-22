@@ -277,7 +277,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 			i++;
 			if (i >= rawArgs.length || !rawArgs[i]) {
 				throw new Error(
-					"--resume requires a run ID. Example: --resume 2025-12-21T10-00-00-abc123",
+					"--resume requires a run ID. Example: --resume run_1735000000000_abc123",
 				);
 			}
 			resumeRunId = rawArgs[i]!;

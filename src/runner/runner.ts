@@ -210,7 +210,7 @@ export async function executeCases(
 	runId: string,
 	concurrency: number = 1,
 	checkpoint?: Checkpoint | null,
-): Promise<RunCaseResult[]> {
+): Promise<{ results: RunCaseResult[]; checkpoint: Checkpoint | null }> {
 	const benchmarkRegistry = BenchmarkRegistry.getInstance();
 	const benchmarkEntry = benchmarkRegistry.get(benchmarkName);
 
@@ -221,12 +221,20 @@ export async function executeCases(
 	const benchmark = benchmarkEntry.benchmark;
 	const allCases = Array.from(benchmark.cases());
 
+	// Filter out already-completed cases (for resume functionality)
+	const casesToRun = checkpoint
+		? allCases.filter((benchmarkCase) => {
+				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
+				return !(caseKey in checkpoint.completed);
+		  })
+		: allCases;
+
 	if (concurrency === 1) {
 		// Sequential execution for concurrency=1
 		const results: RunCaseResult[] = [];
-		let currentCheckpoint = checkpoint;
+		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
 
-		for (const benchmarkCase of allCases) {
+		for (const benchmarkCase of casesToRun) {
 			const result = await executeCase(
 				providerName,
 				benchmarkName,
@@ -245,12 +253,12 @@ export async function executeCases(
 				);
 			}
 		}
-		return results;
+		return { results, checkpoint: currentCheckpoint };
 	} else {
 		// Concurrent execution using concurrency pool
 		// Note: Checkpoint recording for concurrent execution happens at batch boundaries
 		const results = await createConcurrencyPool(
-			allCases,
+			casesToRun,
 			concurrency,
 			async (benchmarkCase) => {
 				return executeCase(
@@ -263,12 +271,12 @@ export async function executeCases(
 		);
 
 		// Record all checkpoints after batch completes
+		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
 		if (checkpoint) {
-			let currentCheckpoint = checkpoint;
 			for (let i = 0; i < results.length; i++) {
 				const result = results[i];
-				const benchmarkCase = allCases[i];
-				if (result && benchmarkCase) {
+				const benchmarkCase = casesToRun[i];
+				if (result && benchmarkCase && currentCheckpoint) {
 					const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
 					currentCheckpoint = await checkpointManager.recordCompletion(
 						currentCheckpoint,
@@ -279,7 +287,7 @@ export async function executeCases(
 			}
 		}
 
-		return results;
+		return { results, checkpoint: currentCheckpoint };
 	}
 }
 
@@ -365,7 +373,7 @@ export async function executeRunPlan(
 	// Execute only eligible entries
 	for (const entry of eligibleEntries) {
 		try {
-			const caseResults = await executeCases(
+			const { results: caseResults, checkpoint: updatedCheckpoint } = await executeCases(
 				entry.provider_name,
 				entry.benchmark_name,
 				plan.run_id,
@@ -373,6 +381,8 @@ export async function executeRunPlan(
 				checkpoint,
 			);
 			allResults.push(...caseResults);
+			// Update checkpoint for next iteration
+			checkpoint = updatedCheckpoint;
 		} catch (error) {
 			// Log error but continue with other entries
 			console.error(

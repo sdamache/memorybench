@@ -241,8 +241,8 @@ export class RetryExecutor {
 				// This ensures the delay recorded in history matches the actual delay slept
 				const delay = calculateDelay(attempt, policy);
 
-				// Record attempt (for retries, not the initial attempt)
-				if (attempt > 0) {
+				// Record ALL failed attempts (including initial failure to capture why retry was needed)
+				if (true) {
 					retryHistory.push({
 						attempt,
 						error_type: classified.category,

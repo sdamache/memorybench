@@ -6,7 +6,7 @@ import { EMBEDDING_DIMENSION } from "./config";
  * Generate embedding using Gemini Embedding 001 via Vertex AI
  * Uses gcloud application-default credentials for authentication
  * @param inputs - String or array of strings to embed
- * @returns Array of embedding vectors (768 dimensions)
+ * @returns Array of embedding vectors (3072 dimensions)
  */
 export async function generateEmbeddings(
 	inputs: string | string[],
