@@ -134,6 +134,19 @@ describe("bm25Score", () => {
 		expect(bm25Score(queryTokens, docTokens, allDocs, avgDl)).toBe(0);
 	});
 
+	test("should return 0 when avgDl is 0 (all empty documents)", () => {
+		// Edge case: all documents tokenize to empty arrays
+		const queryTokens = ["test"];
+		const docTokens: string[] = [];
+		const allDocs: string[][] = [[], [], []];
+		const avgDl = avgDocLength(allDocs); // Returns 0
+
+		// Should return 0 instead of NaN
+		const score = bm25Score(queryTokens, docTokens, allDocs, avgDl);
+		expect(score).toBe(0);
+		expect(Number.isNaN(score)).toBe(false);
+	});
+
 	test("should return positive score when query matches document", () => {
 		const queryTokens = ["apple"];
 		const docTokens = ["apple", "banana"];

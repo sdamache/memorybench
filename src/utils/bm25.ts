@@ -84,6 +84,11 @@ export function bm25Score(
 	allDocTokens: string[][],
 	avgDl: number,
 ): number {
+	// Guard against division by zero (e.g., all documents tokenize to [])
+	if (avgDl <= 0) {
+		return 0;
+	}
+
 	const docFreq = termFreq(docTokens);
 	const docLen = docTokens.length;
 
