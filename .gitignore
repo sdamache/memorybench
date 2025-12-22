@@ -36,9 +36,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Datasets
 datasets/
 
-# Results
+# Results (output data, not source code)
 results/
 evaluations/
+!src/results/
 
 # Checkpoints
 checkpoints/
