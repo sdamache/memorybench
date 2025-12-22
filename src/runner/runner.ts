@@ -35,6 +35,8 @@ import {
 	computeManifestHash,
 	type ProviderInfo,
 	type BenchmarkInfo,
+	type ResultsWriter,
+	type ResultRecord,
 } from "../results";
 
 // =============================================================================
@@ -209,6 +211,7 @@ async function createConcurrencyPool<T, R>(
  * @param runId - Unique run identifier
  * @param concurrency - Max parallel case executions (default: 1 = sequential)
  * @param checkpoint - Optional checkpoint for recording progress
+ * @param writer - Results writer for appending case results incrementally
  * @returns Array of case results
  */
 export async function executeCases(
@@ -217,6 +220,7 @@ export async function executeCases(
 	runId: string,
 	concurrency: number = 1,
 	checkpoint?: Checkpoint | null,
+	writer?: ResultsWriter,
 ): Promise<{ results: RunCaseResult[]; checkpoint: Checkpoint | null }> {
 	const benchmarkRegistry = BenchmarkRegistry.getInstance();
 	const benchmarkEntry = benchmarkRegistry.get(benchmarkName);
@@ -250,6 +254,15 @@ export async function executeCases(
 			);
 			results.push(result);
 
+			// Append result to JSONL file immediately
+			if (writer) {
+				const resultRecord: ResultRecord = {
+					run_id: runId,
+					...result,
+				};
+				await writer.appendResult(resultRecord);
+			}
+
 			// Record checkpoint after each case
 			if (currentCheckpoint) {
 				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
@@ -277,20 +290,29 @@ export async function executeCases(
 			},
 		);
 
-		// Record all checkpoints after batch completes
+		// Append all results and record checkpoints after batch completes
 		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
-		if (checkpoint) {
-			for (let i = 0; i < results.length; i++) {
-				const result = results[i];
-				const benchmarkCase = casesToRun[i];
-				if (result && benchmarkCase && currentCheckpoint) {
-					const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
-					currentCheckpoint = await checkpointManager.recordCompletion(
-						currentCheckpoint,
-						caseKey,
-						result.status,
-					);
-				}
+		for (let i = 0; i < results.length; i++) {
+			const result = results[i];
+			const benchmarkCase = casesToRun[i];
+
+			// Append result to JSONL file
+			if (result && writer) {
+				const resultRecord: ResultRecord = {
+					run_id: runId,
+					...result,
+				};
+				await writer.appendResult(resultRecord);
+			}
+
+			// Record checkpoint
+			if (result && benchmarkCase && currentCheckpoint) {
+				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
+				currentCheckpoint = await checkpointManager.recordCompletion(
+					currentCheckpoint,
+					caseKey,
+					result.status,
+				);
 			}
 		}
 
@@ -434,6 +456,7 @@ export async function executeRunPlan(
 				plan.run_id,
 				selection.concurrency,
 				checkpoint,
+				writer,
 			);
 			allResults.push(...caseResults);
 			// Update checkpoint for next iteration

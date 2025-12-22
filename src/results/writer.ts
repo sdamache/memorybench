@@ -8,7 +8,7 @@
  */
 
 import { join } from "node:path";
-import { rename } from "node:fs/promises";
+import { rename, appendFile } from "node:fs/promises";
 import { platform, release, arch } from "node:os";
 import { createHash } from "node:crypto";
 import type {
@@ -182,7 +182,7 @@ export async function buildRunManifest(
 class ResultsWriterImpl implements ResultsWriter {
 	readonly runDir: string;
 	private resultsFilePath: string;
-	private resultsFile: BunFile | null = null;
+	private appendQueue: Promise<void> = Promise.resolve();
 
 	constructor(runId: string, baseDir = "runs") {
 		this.runDir = getRunDir(runId, baseDir);
@@ -195,14 +195,16 @@ class ResultsWriterImpl implements ResultsWriter {
 	}
 
 	async appendResult(result: ResultRecord): Promise<void> {
-		// Ensure results file is opened
-		if (!this.resultsFile) {
-			this.resultsFile = Bun.file(this.resultsFilePath);
-		}
+		// Serialize append operations to prevent interleaving (concurrent write safety)
+		this.appendQueue = this.appendQueue.then(async () => {
+			const line = JSON.stringify(result) + "\n";
 
-		// Append line with newline
-		const line = JSON.stringify(result) + "\n";
-		await Bun.write(this.resultsFilePath, line, { createPath: true });
+			// Use Node.js appendFile for atomic line-level appends
+			// This handles concurrent writes safely at the OS level
+			await appendFile(this.resultsFilePath, line, { encoding: "utf-8" });
+		});
+
+		await this.appendQueue;
 	}
 
 	async writeSummary(summary: MetricsSummary): Promise<void> {
@@ -211,9 +213,8 @@ class ResultsWriterImpl implements ResultsWriter {
 	}
 
 	async close(): Promise<void> {
-		// Close is a no-op for file-based writer
-		// Bun handles file cleanup automatically
-		this.resultsFile = null;
+		// Wait for all pending appends to complete before closing
+		await this.appendQueue;
 	}
 }
 
