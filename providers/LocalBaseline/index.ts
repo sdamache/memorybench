@@ -5,12 +5,25 @@ import type {
 	ScopeContext,
 } from "../../types/core";
 import type { BaseProvider } from "../../types/provider";
+import { tokenize, bm25Score, avgDocLength } from "../../src/utils/bm25";
 
-// Your in-memory storage (replace with actual implementation)
+// In-memory storage for LocalBaseline provider
 const memories = new Map<string, MemoryRecord>();
 
-const quickstartTest: BaseProvider = {
-	name: "quickstart-test", // Must match manifest.provider.name
+/**
+ * LocalBaseline Provider
+ *
+ * A zero-dependency, in-memory provider for MemoryBench that uses BM25
+ * lexical retrieval. Designed for:
+ * - Harness sanity checks (if this passes, the runner works)
+ * - Comparison baseline (sets the "floor" for real providers)
+ * - Zero-config testing (runs in CI without API keys)
+ *
+ * Retrieval uses BM25 (Best Matching 25), an industry-standard probabilistic
+ * ranking function for lexical text matching.
+ */
+const localBaseline: BaseProvider = {
+	name: "LocalBaseline", // Must match manifest.provider.name
 
 	// === Required Operations ===
 
@@ -39,22 +52,42 @@ const quickstartTest: BaseProvider = {
 		query: string,
 		limit = 10,
 	): Promise<RetrievalItem[]> {
-		const results: RetrievalItem[] = [];
 		const prefix = `${scope.user_id}:${scope.run_id}:`;
 
+		// Collect all records in scope
+		const scopedRecords: Array<{ key: string; record: MemoryRecord }> = [];
 		for (const [key, record] of memories) {
-			if (!key.startsWith(prefix)) continue;
-
-			// Simple substring matching (replace with real search logic)
-			if (record.context.toLowerCase().includes(query.toLowerCase())) {
-				results.push({
-					record,
-					score: 0.8, // Replace with real scoring
-				});
+			if (key.startsWith(prefix)) {
+				scopedRecords.push({ key, record });
 			}
 		}
 
-		return results.slice(0, limit);
+		if (scopedRecords.length === 0) {
+			return [];
+		}
+
+		// Tokenize query and all documents for BM25 scoring
+		const queryTokens = tokenize(query);
+		const allDocTokens = scopedRecords.map((r) => tokenize(r.record.context));
+		const avgDl = avgDocLength(allDocTokens);
+
+		// Score each document using BM25
+		const scoredResults = scopedRecords.map((r, index) => {
+			const docTokens = allDocTokens[index] ?? [];
+			const score = bm25Score(queryTokens, docTokens, allDocTokens, avgDl);
+			return {
+				record: r.record,
+				score,
+			};
+		});
+
+		// Sort by score descending and filter out zero scores
+		const results = scoredResults
+			.filter((r) => r.score > 0)
+			.sort((a, b) => b.score - a.score)
+			.slice(0, limit);
+
+		return results;
 	},
 
 	async delete_memory(
@@ -108,4 +141,4 @@ const quickstartTest: BaseProvider = {
 	},
 };
 
-export default quickstartTest;
+export default localBaseline;

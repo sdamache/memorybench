@@ -12,10 +12,10 @@ bun run index.ts list benchmarks
 bun run index.ts list providers
 
 # Run a single benchmark against a single provider
-bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benchmark
+bun run index.ts eval --providers LocalBaseline --benchmarks RAG-template-benchmark
 
 # Run with concurrent execution for faster results
-bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benchmark --concurrency 4
+bun run index.ts eval --providers LocalBaseline --benchmarks RAG-template-benchmark --concurrency 4
 ```
 
 ## Running Benchmarks
@@ -25,7 +25,7 @@ bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benc
 Run a provider against a benchmark and get structured JSON results:
 
 ```bash
-bun run index.ts eval --providers quickstart-test --benchmarks RAG-template-benchmark
+bun run index.ts eval --providers LocalBaseline --benchmarks RAG-template-benchmark
 ```
 
 Output includes:
@@ -40,7 +40,7 @@ Run multiple combinations in a single evaluation:
 
 ```bash
 bun run index.ts eval \
-  --providers quickstart-test AQRAG \
+  --providers LocalBaseline AQRAG \
   --benchmarks RAG-template-benchmark LongMemEval
 ```
 
@@ -52,7 +52,7 @@ Speed up evaluations by running cases in parallel:
 
 ```bash
 bun run index.ts eval \
-  --providers quickstart-test \
+  --providers LocalBaseline \
   --benchmarks RAG-template-benchmark \
   --concurrency 4
 ```
@@ -65,7 +65,7 @@ The `eval` command outputs structured JSON to stdout and writes persistent resul
 
 ```bash
 bun run index.ts eval \
-  --providers quickstart-test \
+  --providers LocalBaseline \
   --benchmarks RAG-template-benchmark \
   > results.json
 ```
@@ -76,11 +76,11 @@ bun run index.ts eval \
 {
   "plan": {
     "entries": [{
-      "provider_name": "quickstart-test",
+      "provider_name": "LocalBaseline",
       "benchmark_name": "some-benchmark",
       "eligible": false,
       "skip_reason": {
-        "message": "Provider 'quickstart-test' lacks required capability: update_memory"
+        "message": "Provider 'LocalBaseline' lacks required capability: update_memory"
       }
     }]
   }
@@ -128,7 +128,7 @@ See [docs/output-format.md](docs/output-format.md) for complete schema documenta
 |----------|-------------|
 | ContextualRetrieval | Contextual chunking with embeddings |
 | AQRAG | Adaptive query RAG |
-| quickstart-test | Simple in-memory provider for testing |
+| LocalBaseline | In-memory provider with BM25 lexical retrieval (no API keys required) |
 
 ## Adding a Benchmark
 

@@ -35,7 +35,7 @@ describe("US1: Core Evaluation - End-to-End Run", () => {
 	test("should execute provider x benchmark evaluation and produce results", async () => {
 		// Arrange
 		const selection: RunSelection = {
-			providers: ["quickstart-test"],
+			providers: ["LocalBaseline"],
 			benchmarks: ["RAG-template-benchmark"],
 			concurrency: 1,
 		};
@@ -49,7 +49,7 @@ describe("US1: Core Evaluation - End-to-End Run", () => {
 		expect(output.timestamp).toBeDefined();
 
 		// Verify selections echoed back
-		expect(output.selections.providers).toEqual(["quickstart-test"]);
+		expect(output.selections.providers).toEqual(["LocalBaseline"]);
 		expect(output.selections.benchmarks).toEqual(["RAG-template-benchmark"]);
 
 		// Verify plan was generated
@@ -74,7 +74,7 @@ describe("US1: Core Evaluation - End-to-End Run", () => {
 		if (output.results.length > 0) {
 			const firstResult = output.results[0]!;
 			expect(firstResult.duration_ms).toBeGreaterThanOrEqual(0);
-			expect(firstResult.provider_name).toBe("quickstart-test");
+			expect(firstResult.provider_name).toBe("LocalBaseline");
 			expect(firstResult.benchmark_name).toBe("RAG-template-benchmark");
 		}
 	}, 30000); // 30 second timeout for actual benchmark execution
@@ -91,7 +91,7 @@ describe("US2: Capability Gating - Skip Incompatible Combinations", () => {
 
 		// Arrange - Build a run plan to check gating without execution
 		const selection: RunSelection = {
-			providers: ["quickstart-test"], // has add/retrieve/delete, NO update
+			providers: ["LocalBaseline"], // has add/retrieve/delete, NO update
 			benchmarks: ["LongMemEval"], // requires add/retrieve only
 			concurrency: 1,
 		};
@@ -145,7 +145,7 @@ describe("US3: Concurrent Execution - Parallel Case Processing", () => {
 
 		// Arrange
 		const selection: RunSelection = {
-			providers: ["quickstart-test"],
+			providers: ["LocalBaseline"],
 			benchmarks: ["RAG-template-benchmark"],
 			concurrency: 2, // Request concurrent execution
 		};
@@ -175,9 +175,9 @@ describe("US3: Concurrent Execution - Parallel Case Processing", () => {
 describe("Integration: Deterministic Ordering", () => {
 	test("should produce deterministic run plan ordering", async () => {
 		// Arrange - Use multiple benchmarks to test alphabetical sorting
-		// (Using benchmarks instead of providers since only quickstart-test is available)
+		// (Using benchmarks instead of providers since only LocalBaseline is available)
 		const selection: RunSelection = {
-			providers: ["quickstart-test"],
+			providers: ["LocalBaseline"],
 			benchmarks: ["RAG-template-benchmark", "LongMemEval"], // Two benchmarks to test sorting
 			concurrency: 1,
 		};
