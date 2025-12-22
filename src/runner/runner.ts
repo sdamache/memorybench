@@ -29,6 +29,13 @@ import type {
 	OperationTiming,
 	Checkpoint,
 } from "./types";
+import {
+	createResultsWriter,
+	buildRunManifest,
+	computeManifestHash,
+	type ProviderInfo,
+	type BenchmarkInfo,
+} from "../results";
 
 // =============================================================================
 // Scope Context Creation
@@ -369,6 +376,54 @@ export async function executeRunPlan(
 			totalCases,
 		);
 	}
+
+	// Create results writer and write manifest
+	const writer = await createResultsWriter(plan.run_id);
+
+	// Collect provider metadata with manifest hashes
+	const providerRegistry = await ProviderRegistry.getInstance();
+	const providers: ProviderInfo[] = [];
+	for (const entry of eligibleEntries) {
+		const existing = providers.find((p) => p.name === entry.provider_name);
+		if (!existing) {
+			const providerEntry = providerRegistry.getProvider(entry.provider_name);
+			if (providerEntry) {
+				providers.push({
+					name: providerEntry.manifest.provider.name,
+					version: providerEntry.manifest.provider.version,
+					manifest_hash: computeManifestHash(providerEntry.manifest),
+				});
+			}
+		}
+	}
+
+	// Collect benchmark metadata
+	const benchmarks: BenchmarkInfo[] = [];
+	for (const entry of eligibleEntries) {
+		const existing = benchmarks.find((b) => b.name === entry.benchmark_name);
+		if (!existing) {
+			const benchmarkEntry = benchmarkRegistry.get(entry.benchmark_name);
+			if (benchmarkEntry) {
+				const caseCount = Array.from(benchmarkEntry.benchmark.cases()).length;
+				benchmarks.push({
+					name: entry.benchmark_name,
+					version: "1.0.0", // TODO: Get from benchmark metadata when available
+					case_count: caseCount,
+				});
+			}
+		}
+	}
+
+	// Build and write run manifest
+	const manifest = await buildRunManifest(
+		plan.run_id,
+		plan.timestamp,
+		selection,
+		plan,
+		providers,
+		benchmarks,
+	);
+	await writer.writeManifest(manifest);
 
 	// Execute only eligible entries
 	for (const entry of eligibleEntries) {
