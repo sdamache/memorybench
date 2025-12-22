@@ -130,6 +130,7 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - **007-unified-runner**: Provider x benchmark matrix execution with capability gating, timing capture, and structured results output
 
 ## Recent Changes
+- **ContextualRetrieval provider**: Fixed authentication by migrating from Google Generative Language API (OAuth2-required) to Vertex AI with gcloud credentials; updated to gemini-embedding-001 (3072D embeddings); removed pgvector index due to 2000D limit (uses brute-force search for accuracy)
 - **006-benchmark-interface**: Pluggable benchmark interface with auto-discovery, data-driven benchmarks using manifest.json, reusable evaluation protocols (LLM-as-judge, exact-match), ingestion strategies (session-based, simple), and retrieval metrics
 - **005-provider-contract**: Universal provider contract with BaseProvider interface, ProviderRegistry singleton, auto-detection of legacy TemplateType providers via LegacyProviderAdapter, capability validation (FR-014, R6), structured logging, and comprehensive error handling for load-partial behavior
 - **004-provider-manifest**: Provider manifest schema with Zod validation and CLI commands

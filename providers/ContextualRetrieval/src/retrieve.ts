@@ -8,7 +8,7 @@ export const retrieve = async (query: string) => {
 	if (
 		!embeddings ||
 		embeddings.length === 0 ||
-		typeof embeddings[0] !== "string"
+		!Array.isArray(embeddings[0])
 	) {
 		throw new Error("Failed to generate embeddings");
 	}

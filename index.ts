@@ -242,6 +242,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 	const providers: string[] = [];
 	const benchmarks: string[] = [];
 	let concurrency = 1;
+	let resumeRunId: string | undefined;
 
 	// Parse arguments
 	for (let i = 0; i < rawArgs.length; i++) {
@@ -272,20 +273,38 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 			if (isNaN(concurrency) || concurrency < 1) {
 				throw new Error("--concurrency must be a positive integer");
 			}
+		} else if (arg === "--resume") {
+			i++;
+			if (i >= rawArgs.length || !rawArgs[i]) {
+				throw new Error(
+					"--resume requires a run ID. Example: --resume run_1735000000000_abc123",
+				);
+			}
+			resumeRunId = rawArgs[i]!;
 		}
 	}
 
 	// Validate required arguments
-	if (providers.length === 0) {
-		throw new Error(
-			"No providers specified. Use --providers to specify at least one provider.",
-		);
-	}
+	if (!resumeRunId) {
+		// New run: require providers and benchmarks
+		if (providers.length === 0) {
+			throw new Error(
+				"No providers specified. Use --providers to specify at least one provider.",
+			);
+		}
 
-	if (benchmarks.length === 0) {
-		throw new Error(
-			"No benchmarks specified. Use --benchmarks to specify at least one benchmark.",
-		);
+		if (benchmarks.length === 0) {
+			throw new Error(
+				"No benchmarks specified. Use --benchmarks to specify at least one benchmark.",
+			);
+		}
+	} else {
+		// Resume: require providers and benchmarks to match checkpoint
+		if (providers.length === 0 || benchmarks.length === 0) {
+			throw new Error(
+				"When resuming, you must specify --providers and --benchmarks matching the original run.",
+			);
+		}
 	}
 
 	// Build selection
@@ -295,8 +314,8 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 		concurrency,
 	};
 
-	// Execute runner
-	const output = await run(selection);
+	// Execute runner (with resume if specified)
+	const output = await run(selection, resumeRunId);
 
 	// Output structured JSON to stdout
 	console.log(JSON.stringify(output, null, 2));

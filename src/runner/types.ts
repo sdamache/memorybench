@@ -8,8 +8,8 @@
  * @see specs/007-unified-runner/data-model.md
  */
 
-import type { CaseResult, CaseStatus, ErrorInfo } from "../types/benchmark";
-import type { ScopeContext } from "../types/core";
+import type { CaseResult, CaseStatus, ErrorInfo } from "../../types/benchmark";
+import type { ScopeContext } from "../../types/core";
 
 // =============================================================================
 // Input Types - CLI Parsing
@@ -136,6 +136,9 @@ export interface RunCaseResult {
 
 	/** Debug information */
 	readonly artifacts?: Record<string, unknown>;
+
+	/** Retry history if retries occurred (Issue 008) */
+	readonly retry_history?: readonly RetryAttempt[];
 }
 
 // =============================================================================
@@ -262,3 +265,156 @@ export type TimedFn = <T>(
 	operation: string,
 	fn: () => Promise<T>,
 ) => Promise<TimedResult<T>>;
+
+// =============================================================================
+// Checkpoint Types (Issue 008)
+// =============================================================================
+
+/**
+ * Case key used for checkpoint lookup.
+ * Format: `{provider_name}|{benchmark_name}|{case_id}`
+ */
+export type CaseKey = string;
+
+/**
+ * Minimal info stored per completed case in the checkpoint.
+ * Full results are stored separately in results.jsonl (future).
+ */
+export interface CheckpointedCase {
+	/** Final status: pass, fail, skip, error */
+	readonly status: CaseStatus;
+
+	/** When case completed (ISO 8601) */
+	readonly completed_at: string;
+}
+
+/**
+ * Checkpoint file schema version 1.
+ * Tracks completion state of a run for resume capability.
+ */
+export interface Checkpoint {
+	/** Schema version for future migrations */
+	readonly version: 1;
+
+	/** Unique run identifier */
+	readonly run_id: string;
+
+	/** When the run started (ISO 8601) */
+	readonly created_at: string;
+
+	/** Last checkpoint update time (ISO 8601) */
+	readonly updated_at: string;
+
+	/** Original CLI selections for validation on resume */
+	readonly selections: RunSelection;
+
+	/** Map of case_key → completion info */
+	readonly completed: Record<CaseKey, CheckpointedCase>;
+
+	/** Total cases in the run plan */
+	readonly total_cases: number;
+
+	/** Count of completed cases */
+	readonly completed_count: number;
+}
+
+/**
+ * Result of loading a checkpoint.
+ */
+export type CheckpointLoadResult =
+	| { readonly status: "not_found" }
+	| { readonly status: "loaded"; readonly checkpoint: Checkpoint }
+	| { readonly status: "invalid"; readonly error: string };
+
+/**
+ * Result of validating selections against checkpoint.
+ */
+export type SelectionValidationResult =
+	| { readonly valid: true }
+	| {
+			readonly valid: false;
+			readonly missing_providers: readonly string[];
+			readonly extra_providers: readonly string[];
+			readonly missing_benchmarks: readonly string[];
+			readonly extra_benchmarks: readonly string[];
+	  };
+
+// =============================================================================
+// Retry Types (Issue 008)
+// =============================================================================
+
+/**
+ * Category of error for retry decision.
+ */
+export type ErrorCategory = "transient" | "permanent";
+
+/**
+ * Configuration for retry behavior.
+ */
+export interface RetryPolicy {
+	/** Initial delay before first retry in milliseconds */
+	readonly base_delay_ms: number;
+
+	/** Maximum delay between retries in milliseconds */
+	readonly max_delay_ms: number;
+
+	/** Maximum number of retry attempts */
+	readonly max_retries: number;
+
+	/** Random jitter range (0.5 = ±50%) */
+	readonly jitter_factor: number;
+}
+
+/**
+ * Classified error with category and metadata.
+ */
+export interface ClassifiedError {
+	/** Error category determining retry behavior */
+	readonly category: ErrorCategory;
+
+	/** Original error object */
+	readonly original: Error;
+
+	/** HTTP status code if applicable */
+	readonly http_status?: number;
+
+	/** Whether this error should be retried */
+	readonly should_retry: boolean;
+}
+
+/**
+ * Records a single retry attempt for diagnostics.
+ */
+export interface RetryAttempt {
+	/** Attempt number (1-indexed, 1 = first retry after initial failure) */
+	readonly attempt: number;
+
+	/** Error classification at time of attempt */
+	readonly error_type: ErrorCategory;
+
+	/** Error message that triggered retry */
+	readonly error_message: string;
+
+	/** When this attempt occurred (ISO 8601) */
+	readonly timestamp: string;
+
+	/** Delay waited before this attempt (undefined for initial attempt) */
+	readonly delay_ms?: number;
+}
+
+/**
+ * Result of executing with retry logic.
+ */
+export type RetryResult<T> =
+	| {
+			readonly success: true;
+			readonly value: T;
+			readonly attempts: number;
+			readonly retry_history: readonly RetryAttempt[];
+	  }
+	| {
+			readonly success: false;
+			readonly error: ClassifiedError;
+			readonly attempts: number;
+			readonly retry_history: readonly RetryAttempt[];
+	  };
