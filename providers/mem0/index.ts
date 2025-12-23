@@ -252,7 +252,7 @@ const mem0Provider: BaseProvider = {
 			},
 			system_flags: {
 				async_indexing: true,
-				convergence_wait_ms: 15000, // 15s wait for async indexing to complete
+				convergence_wait_ms: 30000, // 30s wait for async indexing to complete
 			},
 			intelligence_flags: {
 				auto_extraction: true,
