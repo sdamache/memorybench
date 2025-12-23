@@ -49,41 +49,41 @@ function Header({
 	const timeAgo = getTimeAgo(runDate);
 
 	return (
-		<header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/10 pb-6">
+		<header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-sm-border pb-6">
 			<div className="space-y-2">
 				<div className="flex items-center gap-2">
-					<div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-					<span className="text-xs font-mono text-accent uppercase tracking-widest">
+					<div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+					<span className="text-xs font-mono text-emerald-400 uppercase tracking-widest">
 						Run Complete
 					</span>
 				</div>
-				<h1 className="text-3xl md:text-4xl font-medium text-white tracking-tight">
+				<h1 className="text-3xl md:text-4xl font-semibold text-foreground tracking-tight">
 					Results Explorer
 				</h1>
-				<p className="text-gray-500 font-mono text-xs">
+				<p className="text-foreground-muted font-mono text-xs">
 					Viewing Run:{" "}
-					<span className="text-white">{data.manifest.run_id}</span>
-					<span className="mx-2 text-white/20">|</span>
-					<span className="text-gray-600">{timeAgo}</span>
+					<span className="text-foreground">{data.manifest.run_id}</span>
+					<span className="mx-2 text-foreground-dim">|</span>
+					<span className="text-foreground-dim">{timeAgo}</span>
 				</p>
 			</div>
 
 			<div className="flex items-center gap-3">
 				<button
 					onClick={onSelectRun}
-					className="group relative px-6 py-2 bg-transparent text-white border border-white/20 hover:border-accent hover:text-accent transition-colors clip-chamfer"
+					className="group relative px-5 py-2.5 bg-sm-surface text-foreground border border-sm-border hover:border-primary hover:text-primary transition-all rounded-lg"
 				>
-					<span className="text-xs font-bold uppercase tracking-wider">
+					<span className="text-xs font-semibold uppercase tracking-wider">
 						Select Run
 					</span>
 				</button>
 				<button
 					onClick={onExport}
-					className="group relative px-6 py-2 bg-accent text-black hover:bg-white transition-colors clip-chamfer"
+					className="group relative px-5 py-2.5 gradient-primary text-white hover:opacity-90 transition-all rounded-lg shadow-lg"
 				>
 					<div className="flex items-center gap-2">
 						<Icon name="lucide:download" />
-						<span className="text-xs font-bold uppercase tracking-wider">
+						<span className="text-xs font-semibold uppercase tracking-wider">
 							Export
 						</span>
 					</div>
@@ -140,7 +140,7 @@ function MetricCard({
 	value,
 	unit,
 	subtext,
-	subtextColor = "text-gray-500",
+	subtextColor = "text-foreground-muted",
 	progress,
 }: {
 	icon: string;
@@ -152,21 +152,21 @@ function MetricCard({
 	progress?: number;
 }) {
 	return (
-		<div className="cursor-pointer p-6 bg-hex-card border border-white/10 relative overflow-hidden group hover:border-accent/50 transition-all duration-300">
-			<div className="absolute top-4 right-4 text-gray-700 group-hover:text-accent transition-colors">
+		<div className="cursor-pointer p-6 bg-sm-card border border-sm-border rounded-xl relative overflow-hidden group hover:border-primary/50 transition-all duration-300">
+			<div className="absolute top-4 right-4 text-foreground-dim group-hover:text-primary transition-colors">
 				<Icon name={icon} className="w-6 h-6" />
 			</div>
-			<div className="text-gray-500 text-[10px] uppercase tracking-widest font-mono mb-2">
+			<div className="text-foreground-muted text-[10px] uppercase tracking-widest font-mono mb-2">
 				{label}
 			</div>
-			<div className="text-3xl font-medium text-white">
+			<div className="text-3xl font-semibold text-foreground">
 				{value}
-				{unit && <span className="text-lg text-gray-500 ml-1">{unit}</span>}
+				{unit && <span className="text-lg text-foreground-muted ml-1">{unit}</span>}
 			</div>
 			{progress !== undefined && (
-				<div className="w-full bg-gray-800 h-1 mt-3 overflow-hidden">
+				<div className="w-full bg-sm-surface h-1.5 mt-3 overflow-hidden rounded-full">
 					<div
-						className="bg-accent h-full transition-all duration-500"
+						className="gradient-primary h-full transition-all duration-500 rounded-full"
 						style={{ width: `${progress}%` }}
 					/>
 				</div>
@@ -218,11 +218,11 @@ function ScoreOverview({
 	if (combinations.length === 0) return null;
 
 	return (
-		<div className="overflow-hidden border border-white/10 bg-hex-card">
-			<div className="p-4 border-b border-white/10 flex items-center justify-between">
+		<div className="overflow-hidden border border-sm-border bg-sm-card rounded-xl">
+			<div className="p-4 border-b border-sm-border flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					<Icon name="lucide:bar-chart-2" className="text-accent" />
-					<span className="text-xs font-bold uppercase tracking-wider text-white">
+					<Icon name="lucide:bar-chart-2" className="text-primary" />
+					<span className="text-xs font-semibold uppercase tracking-wider text-foreground">
 						Average Scores
 					</span>
 				</div>
@@ -244,14 +244,14 @@ function ScoreOverview({
 			</div>
 
 			{visibleMetrics.length === 0 ? (
-				<div className="p-6 text-xs text-gray-500 font-mono">
+				<div className="p-6 text-xs text-foreground-muted font-mono">
 					No metrics available for this view.
 				</div>
 			) : (
 				<div className="overflow-x-auto">
 					<table className="w-full text-left border-collapse text-xs font-mono">
 						<thead>
-							<tr className="border-b border-white/10 bg-white/5 text-gray-500 uppercase tracking-wider">
+							<tr className="border-b border-sm-border bg-sm-surface text-foreground-muted uppercase tracking-wider">
 								<th className="p-4 font-bold">Provider</th>
 								<th className="p-4 font-bold">Benchmark</th>
 								<th className="p-4 font-bold text-right">Cases</th>
@@ -268,7 +268,7 @@ function ScoreOverview({
 								))}
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-white/5">
+						<tbody className="divide-y divide-sm-border">
 							{combinations.map((combo) => {
 								const pass =
 									combo.counts.cases > 0
@@ -283,26 +283,26 @@ function ScoreOverview({
 								return (
 									<tr
 										key={`${combo.provider_name}:${combo.benchmark_name}`}
-										className="hover:bg-white/5 transition-colors"
+										className="hover:bg-sm-surface transition-colors"
 									>
-										<td className="p-4 text-gray-300">{combo.provider_name}</td>
-										<td className="p-4 text-gray-400">{combo.benchmark_name}</td>
-										<td className="p-4 text-right text-gray-500">
+										<td className="p-4 text-foreground">{combo.provider_name}</td>
+										<td className="p-4 text-foreground-muted">{combo.benchmark_name}</td>
+										<td className="p-4 text-right text-foreground-muted">
 											{combo.counts.cases.toLocaleString()}
 										</td>
-										<td className="p-4 text-right text-gray-500">
+										<td className="p-4 text-right text-foreground-muted">
 											{pass.toFixed(1)}%
 										</td>
-										<td className="p-4 text-right text-gray-500">
+										<td className="p-4 text-right text-foreground-muted">
 											{avg.value}
-											<span className="text-gray-600 ml-1">{avg.unit}</span>
+											<span className="text-foreground-dim ml-1">{avg.unit}</span>
 										</td>
 										{visibleMetrics.map((metricKey) => {
 											const scoreValue = combo.score_averages[metricKey];
 											return (
 												<td
 													key={metricKey}
-													className="p-4 text-right text-gray-300"
+													className="p-4 text-right text-foreground"
 												>
 													{scoreValue === undefined
 														? "—"
@@ -334,10 +334,10 @@ function ToggleButton({
 		<button
 			type="button"
 			onClick={onClick}
-			className={`px-3 py-1.5 border text-[10px] font-bold uppercase tracking-wider transition-colors clip-chamfer ${
+			className={`px-3 py-1.5 border text-[10px] font-semibold uppercase tracking-wider transition-colors rounded-lg ${
 				active
-					? "bg-accent text-black border-accent"
-					: "bg-hex-surface text-gray-300 border-white/10 hover:border-accent/50 hover:text-white"
+					? "gradient-primary text-white border-transparent"
+					: "bg-sm-surface text-foreground-muted border-sm-border hover:border-primary/50 hover:text-foreground"
 			}`}
 		>
 			{children}
@@ -374,15 +374,15 @@ function Filters({
 	totalCount: number;
 }) {
 	return (
-		<div className="flex flex-wrap items-center gap-4 p-4 bg-hex-surface border border-white/10 clip-chamfer">
+		<div className="flex flex-wrap items-center gap-4 p-4 bg-sm-surface border border-sm-border rounded-xl">
 			<div className="flex items-center gap-3">
-				<Icon name="lucide:filter" className="text-accent" />
-				<span className="text-xs font-bold uppercase tracking-wider text-white">
+				<Icon name="lucide:filter" className="text-primary" />
+				<span className="text-xs font-semibold uppercase tracking-wider text-foreground">
 					Filters:
 				</span>
 			</div>
 
-			<div className="h-4 w-px bg-white/10" />
+			<div className="h-4 w-px bg-sm-border" />
 
 			<div className="flex gap-4">
 				<FilterSelect
@@ -419,18 +419,18 @@ function Filters({
 							setCaseQuery(e.target.value)
 						}
 						placeholder="Search Case ID"
-						className="bg-black border border-white/20 text-xs text-gray-300 pl-3 pr-8 py-1.5 focus:border-accent outline-none tracking-wide w-48"
+						className="bg-sm-bg border border-sm-border text-xs text-foreground pl-3 pr-8 py-2 focus:border-primary outline-none tracking-wide w-48 rounded-lg transition-colors"
 					/>
 					{caseQuery ? (
 						<button
 							type="button"
 							onClick={() => setCaseQuery("")}
-							className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-accent"
+							className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-primary"
 						>
 							<Icon name="lucide:x" />
 						</button>
 					) : (
-						<span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+						<span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-dim">
 							<Icon name="lucide:search" />
 						</span>
 					)}
@@ -438,7 +438,7 @@ function Filters({
 			</div>
 
 			<div className="ml-auto flex items-center gap-2">
-				<span className="text-[10px] text-gray-500 font-mono">
+				<span className="text-[10px] text-foreground-muted font-mono">
 					Showing {filteredCount} of {totalCount}
 				</span>
 			</div>
@@ -460,7 +460,7 @@ function FilterSelect({
 			<select
 				value={value}
 				onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
-				className="appearance-none bg-black border border-white/20 text-xs text-gray-300 pl-3 pr-8 py-1.5 focus:border-accent outline-none uppercase tracking-wide cursor-pointer w-40"
+				className="appearance-none bg-sm-bg border border-sm-border text-xs text-foreground pl-3 pr-8 py-2 focus:border-primary outline-none uppercase tracking-wide cursor-pointer w-40 rounded-lg transition-colors"
 			>
 				{options.map((opt) => (
 					<option key={opt.value} value={opt.value}>
@@ -468,7 +468,7 @@ function FilterSelect({
 					</option>
 				))}
 			</select>
-			<span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+			<span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-dim">
 				<Icon name="lucide:chevron-down" />
 			</span>
 		</div>
@@ -638,7 +638,7 @@ function ResultsTable({
 	}: { field: string; label: string; align?: "left" | "right" }) => (
 		<th
 			onClick={() => handleSort(field)}
-			className={`p-4 font-bold cursor-pointer hover:text-white transition-colors ${align === "right" ? "text-right" : ""}`}
+			className={`p-4 font-semibold cursor-pointer hover:text-foreground transition-colors ${align === "right" ? "text-right" : ""}`}
 		>
 			<div
 				className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}
@@ -647,7 +647,7 @@ function ResultsTable({
 				{sortKey === field && (
 					<Icon
 						name={sortOrder === "asc" ? "lucide:arrow-up" : "lucide:arrow-down"}
-						className="w-3 h-3"
+						className="w-3 h-3 text-primary"
 					/>
 				)}
 			</div>
@@ -655,23 +655,23 @@ function ResultsTable({
 	);
 
 	return (
-		<div className="overflow-hidden border border-white/10 bg-hex-card">
+		<div className="overflow-hidden border border-sm-border bg-sm-card rounded-xl">
 			<table className="w-full text-left border-collapse text-xs font-mono">
 				<thead>
-					<tr className="border-b border-white/10 bg-white/5 text-gray-500 uppercase tracking-wider">
+					<tr className="border-b border-sm-border bg-sm-surface text-foreground-muted uppercase tracking-wider">
 						<SortHeader field="status" label="Status" />
 						<SortHeader field="case_id" label="Case ID" />
 						<SortHeader field="provider_name" label="Provider" />
 						<SortHeader field="benchmark_name" label="Benchmark" />
 						<SortHeader field="duration_ms" label="Duration" align="right" />
-						<th className="p-4 font-bold text-right">Scores</th>
-						<th className="p-4 font-bold w-12" />
+						<th className="p-4 font-semibold text-right">Scores</th>
+						<th className="p-4 font-semibold w-12" />
 					</tr>
 				</thead>
-				<tbody className="divide-y divide-white/5">
+				<tbody className="divide-y divide-sm-border">
 					{pageResults.length === 0 ? (
 						<tr>
-							<td colSpan={7} className="p-10 text-center text-gray-500">
+							<td colSpan={7} className="p-10 text-center text-foreground-muted">
 								No results match the current filters.
 							</td>
 						</tr>
@@ -680,21 +680,21 @@ function ResultsTable({
 							<tr
 								key={`${result.run_id}:${result.provider_name}:${result.benchmark_name}:${result.case_id}`}
 								onClick={() => onSelect(result)}
-								className="group hover:bg-white/5 transition-colors cursor-pointer"
+								className="group hover:bg-sm-surface transition-colors cursor-pointer"
 							>
 								<td className="p-4">
 									<StatusIcon status={result.status} />
 								</td>
-								<td className="p-4 text-white font-medium">{result.case_id}</td>
-								<td className="p-4 text-gray-300">{result.provider_name}</td>
-									<td className="p-4 text-gray-400">{result.benchmark_name}</td>
-									<td className="p-4 text-right text-gray-500">
+								<td className="p-4 text-foreground font-medium">{result.case_id}</td>
+								<td className="p-4 text-foreground">{result.provider_name}</td>
+									<td className="p-4 text-foreground-muted">{result.benchmark_name}</td>
+									<td className="p-4 text-right text-foreground-muted">
 										{formatDurationLabel(result.duration_ms)}
 									</td>
 									<td className="p-4 text-right">
 										<ScoresCell scores={result.scores} />
 									</td>
-									<td className="p-4 text-center text-gray-600 group-hover:text-accent">
+									<td className="p-4 text-center text-foreground-dim group-hover:text-primary">
 										<Icon name="lucide:chevron-right" />
 									</td>
 								</tr>
@@ -702,8 +702,8 @@ function ResultsTable({
 					)}
 				</tbody>
 			</table>
-			<div className="p-4 border-t border-white/5 flex flex-col md:flex-row md:items-center gap-3 justify-between bg-black/20">
-				<div className="flex items-center gap-3 text-[10px] text-gray-500 font-mono uppercase tracking-wider">
+			<div className="p-4 border-t border-sm-border flex flex-col md:flex-row md:items-center gap-3 justify-between bg-sm-bg/50">
+				<div className="flex items-center gap-3 text-[10px] text-foreground-muted font-mono uppercase tracking-wider">
 					<span>Rows</span>
 					<div className="relative group">
 						<select
@@ -711,21 +711,21 @@ function ResultsTable({
 							onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
 								setPageSize(Number.parseInt(e.target.value, 10))
 							}
-							className="appearance-none bg-black border border-white/20 text-[10px] text-gray-300 pl-3 pr-8 py-1 focus:border-accent outline-none uppercase tracking-wide cursor-pointer"
+							className="appearance-none bg-sm-bg border border-sm-border text-[10px] text-foreground pl-3 pr-8 py-1.5 focus:border-primary outline-none uppercase tracking-wide cursor-pointer rounded-lg"
 						>
 							<option value="50">50</option>
 							<option value="100">100</option>
 							<option value="200">200</option>
 							<option value="500">500</option>
 						</select>
-						<span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+						<span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-dim">
 							<Icon name="lucide:chevron-down" />
 						</span>
 					</div>
 				</div>
 
 				<div className="flex items-center justify-between md:justify-end gap-3">
-					<div className="text-[10px] text-gray-500 font-mono">
+					<div className="text-[10px] text-foreground-muted font-mono">
 						{sortedResults.length === 0
 							? "0 results"
 							: `${startIndex + 1}-${Math.min(startIndex + pageSize, sortedResults.length)} of ${sortedResults.length}`}
@@ -735,7 +735,7 @@ function ResultsTable({
 							type="button"
 							disabled={clampedPage === 0}
 							onClick={() => setPage((p) => Math.max(0, p - 1))}
-							className="px-3 py-1 bg-hex-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:hover:border-white/10 disabled:hover:text-gray-500 transition-colors clip-chamfer text-[10px] font-bold uppercase tracking-wider text-gray-300"
+							className="px-3 py-1.5 bg-sm-surface border border-sm-border hover:border-primary hover:text-primary disabled:opacity-50 disabled:hover:border-sm-border disabled:hover:text-foreground-dim transition-colors rounded-lg text-[10px] font-semibold uppercase tracking-wider text-foreground-muted"
 						>
 							Prev
 						</button>
@@ -743,7 +743,7 @@ function ResultsTable({
 							type="button"
 							disabled={clampedPage >= pageCount - 1}
 							onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-							className="px-3 py-1 bg-hex-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:hover:border-white/10 disabled:hover:text-gray-500 transition-colors clip-chamfer text-[10px] font-bold uppercase tracking-wider text-gray-300"
+							className="px-3 py-1.5 bg-sm-surface border border-sm-border hover:border-primary hover:text-primary disabled:opacity-50 disabled:hover:border-sm-border disabled:hover:text-foreground-dim transition-colors rounded-lg text-[10px] font-semibold uppercase tracking-wider text-foreground-muted"
 						>
 							Next
 						</button>
@@ -780,31 +780,31 @@ function Drilldown({
 
 	return (
 		<div
-			className="fixed inset-0 bg-black/70 z-50 flex justify-end animate-reveal"
+			className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex justify-end animate-reveal"
 			onClick={onClose}
 		>
 			<div
-				className="w-full max-w-2xl bg-hex-card h-full overflow-y-auto shadow-2xl"
+				className="w-full max-w-2xl bg-sm-card h-full overflow-y-auto shadow-2xl border-l border-sm-border"
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
-				<div className="sticky top-0 bg-hex-card border-b border-white/10 p-6 flex items-center justify-between">
+				<div className="sticky top-0 bg-sm-card border-b border-sm-border p-6 flex items-center justify-between">
 					<div className="flex items-center gap-4">
 						<button
 							onClick={onClose}
-							className="flex items-center gap-2 px-4 py-2 bg-hex-surface border border-white/10 hover:border-accent hover:text-accent transition-colors clip-chamfer"
+							className="flex items-center gap-2 px-4 py-2 bg-sm-surface border border-sm-border hover:border-primary hover:text-primary transition-colors rounded-lg"
 						>
 							<Icon name="lucide:arrow-left" className="w-4 h-4" />
-							<span className="text-xs font-bold uppercase tracking-wider">
+							<span className="text-xs font-semibold uppercase tracking-wider">
 								Back
 							</span>
 						</button>
-						<div className="h-8 w-px bg-white/10" />
+						<div className="h-8 w-px bg-sm-border" />
 						<div>
-							<h2 className="text-xl font-medium text-white">
+							<h2 className="text-xl font-semibold text-foreground">
 								{result.case_id}
 							</h2>
-							<div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+							<div className="text-[10px] font-mono text-foreground-dim uppercase tracking-widest">
 								Drilldown Analysis
 							</div>
 						</div>
@@ -815,10 +815,10 @@ function Drilldown({
 				{/* Content */}
 				<div className="p-6 space-y-6">
 					{/* Metadata Card */}
-					<div className="p-6 bg-hex-surface border border-white/10">
+					<div className="p-6 bg-sm-surface border border-sm-border rounded-xl">
 						<div className="flex items-center gap-2 mb-4">
-							<Icon name="lucide:database" className="text-accent" />
-							<span className="text-xs font-bold uppercase tracking-wider text-white">
+							<Icon name="lucide:database" className="text-primary" />
+							<span className="text-xs font-semibold uppercase tracking-wider text-foreground">
 								Metadata
 							</span>
 						</div>
@@ -835,10 +835,10 @@ function Drilldown({
 
 					{/* Scores Card */}
 					{hasScores ? (
-						<div className="p-6 bg-hex-surface border border-white/10">
+						<div className="p-6 bg-sm-surface border border-sm-border rounded-xl">
 							<div className="flex items-center gap-2 mb-4">
-								<Icon name="lucide:bar-chart-2" className="text-accent" />
-								<span className="text-xs font-bold uppercase tracking-wider text-white">
+								<Icon name="lucide:bar-chart-2" className="text-primary" />
+								<span className="text-xs font-semibold uppercase tracking-wider text-foreground">
 									Scores
 								</span>
 								</div>
@@ -848,18 +848,18 @@ function Drilldown({
 										return (
 											<div
 												key={name}
-												className="p-3 bg-black/30 border border-white/5"
+												className="p-3 bg-sm-bg border border-sm-border rounded-lg"
 											>
-												<div className="text-[10px] text-gray-500 uppercase mb-1">
+												<div className="text-[10px] text-foreground-muted uppercase mb-1">
 													{name}
 												</div>
 												<div
-													className={`text-xl font-medium ${
+													className={`text-xl font-semibold ${
 														ratioMetric
 															? score >= 0.7
-																? "text-green-400"
+																? "text-emerald-400"
 																: "text-red-400"
-															: "text-white"
+															: "text-foreground"
 													}`}
 												>
 													{formatMetricValue(name, score, 1)}
@@ -873,10 +873,10 @@ function Drilldown({
 
 					{/* Error Card */}
 					{result.error && (
-						<div className="p-6 bg-red-500/5 border border-red-500/30">
+						<div className="p-6 bg-red-500/10 border border-red-500/30 rounded-xl">
 							<div className="flex items-center gap-2 mb-4">
 								<Icon name="lucide:alert-triangle" className="text-red-500" />
-								<span className="text-xs font-bold uppercase tracking-wider text-red-500">
+								<span className="text-xs font-semibold uppercase tracking-wider text-red-500">
 									Error
 								</span>
 							</div>
@@ -892,14 +892,14 @@ function Drilldown({
 
 					{/* Raw Result */}
 					<details className="group">
-						<summary className="cursor-pointer text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-2">
+						<summary className="cursor-pointer text-xs text-foreground-muted hover:text-foreground transition-colors flex items-center gap-2">
 							<Icon
 								name="lucide:chevron-right"
 								className="w-4 h-4 group-open:rotate-90 transition-transform"
 							/>
 							<span className="uppercase tracking-wider">View Raw Result</span>
 						</summary>
-						<pre className="mt-4 text-xs text-gray-400 font-mono whitespace-pre-wrap overflow-x-auto bg-black/30 p-4 border border-white/5">
+						<pre className="mt-4 text-xs text-foreground-muted font-mono whitespace-pre-wrap overflow-x-auto bg-sm-bg p-4 border border-sm-border rounded-lg">
 							{JSON.stringify(result, null, 2)}
 						</pre>
 					</details>
@@ -912,30 +912,30 @@ function Drilldown({
 function StatusBadge({ status }: { status: string }) {
 	const config: Record<string, { bg: string; border: string; text: string }> = {
 		pass: {
-			bg: "bg-green-500/10",
-			border: "border-green-500",
-			text: "text-green-500",
+			bg: "bg-emerald-500/15",
+			border: "border-emerald-500/50",
+			text: "text-emerald-400",
 		},
 		fail: {
-			bg: "bg-red-500/10",
-			border: "border-red-500",
-			text: "text-red-500",
+			bg: "bg-red-500/15",
+			border: "border-red-500/50",
+			text: "text-red-400",
 		},
 		error: {
-			bg: "bg-red-500/10",
-			border: "border-red-500",
-			text: "text-red-500",
+			bg: "bg-red-500/15",
+			border: "border-red-500/50",
+			text: "text-red-400",
 		},
 		skip: {
-			bg: "bg-yellow-500/10",
-			border: "border-yellow-500",
-			text: "text-yellow-500",
+			bg: "bg-amber-500/15",
+			border: "border-amber-500/50",
+			text: "text-amber-400",
 		},
 	};
 	const statusConfig = config[status] ?? config.skip!;
 	return (
 		<span
-			className={`px-3 py-1 ${statusConfig.bg} border ${statusConfig.border} ${statusConfig.text} text-xs font-bold uppercase tracking-widest clip-chamfer`}
+			className={`px-3 py-1.5 ${statusConfig.bg} border ${statusConfig.border} ${statusConfig.text} text-xs font-semibold uppercase tracking-widest rounded-lg`}
 		>
 			{status}
 		</span>
@@ -945,8 +945,8 @@ function StatusBadge({ status }: { status: string }) {
 function MetadataRow({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="flex justify-between text-xs">
-			<span className="text-gray-500">{label}</span>
-			<span className="text-white font-mono">{value}</span>
+			<span className="text-foreground-muted">{label}</span>
+			<span className="text-foreground font-mono">{value}</span>
 		</div>
 	);
 }
@@ -967,29 +967,31 @@ function RunPicker({
 }) {
 	return (
 		<div
-			className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-reveal"
+			className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center animate-reveal"
 			onClick={onClose}
 		>
 			<div
-				className="w-full max-w-2xl bg-hex-card max-h-[80vh] overflow-hidden shadow-2xl border border-white/10"
+				className="w-full max-w-2xl bg-sm-card max-h-[80vh] overflow-hidden shadow-2xl border border-sm-border rounded-2xl"
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
-				<div className="sticky top-0 bg-hex-card border-b border-white/10 p-6 flex items-center justify-between">
+				<div className="sticky top-0 bg-sm-card border-b border-sm-border p-6 flex items-center justify-between">
 					<div className="flex items-center gap-4">
-						<Icon name="lucide:folder-open" className="text-accent w-6 h-6" />
+						<div className="w-10 h-10 flex items-center justify-center gradient-primary rounded-xl">
+							<Icon name="lucide:folder-open" className="text-white w-5 h-5" />
+						</div>
 						<div>
-							<h2 className="text-xl font-medium text-white">Select Run</h2>
-							<div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+							<h2 className="text-xl font-semibold text-foreground">Select Run</h2>
+							<div className="text-[10px] font-mono text-foreground-dim uppercase tracking-widest">
 								{runs.length} runs available
 							</div>
 						</div>
 					</div>
 					<button
 						onClick={onClose}
-						className="p-2 hover:bg-white/10 transition-colors"
+						className="p-2 hover:bg-sm-surface transition-colors rounded-lg"
 					>
-						<Icon name="lucide:x" className="w-5 h-5 text-gray-400 hover:text-white" />
+						<Icon name="lucide:x" className="w-5 h-5 text-foreground-muted hover:text-foreground" />
 					</button>
 				</div>
 
@@ -997,11 +999,11 @@ function RunPicker({
 				<div className="overflow-y-auto max-h-[60vh] p-4">
 					{loading ? (
 						<div className="flex items-center justify-center py-12">
-							<Icon name="lucide:loader-2" className="w-6 h-6 animate-spin text-accent" />
-							<span className="ml-2 text-gray-500">Loading runs...</span>
+							<Icon name="lucide:loader-2" className="w-6 h-6 animate-spin text-primary" />
+							<span className="ml-2 text-foreground-muted">Loading runs...</span>
 						</div>
 					) : runs.length === 0 ? (
-						<div className="text-center py-12 text-gray-500">
+						<div className="text-center py-12 text-foreground-muted">
 							No runs found in the runs folder.
 						</div>
 					) : (
@@ -1016,32 +1018,32 @@ function RunPicker({
 										key={run.run_id}
 										onClick={() => !isCurrentRun && onSelect(run.run_id)}
 										disabled={isCurrentRun}
-										className={`w-full text-left p-4 border transition-all ${
+										className={`w-full text-left p-4 border transition-all rounded-xl ${
 											isCurrentRun
-												? "border-accent bg-accent/10 cursor-default"
-												: "border-white/10 hover:border-accent/50 hover:bg-white/5 cursor-pointer"
+												? "border-primary bg-primary/10 cursor-default"
+												: "border-sm-border hover:border-primary/50 hover:bg-sm-surface cursor-pointer"
 										}`}
 									>
 										<div className="flex items-start justify-between">
 											<div className="space-y-1">
 												<div className="flex items-center gap-2">
-													<span className="text-white font-mono text-sm">
+													<span className="text-foreground font-mono text-sm">
 														{run.run_id}
 													</span>
 													{isCurrentRun && (
-														<span className="px-2 py-0.5 bg-accent/20 text-accent text-[10px] uppercase tracking-wider">
+														<span className="px-2 py-0.5 bg-primary/20 text-primary text-[10px] uppercase tracking-wider rounded">
 															Current
 														</span>
 													)}
 												</div>
-												<div className="text-[10px] text-gray-500 font-mono">
+												<div className="text-[10px] text-foreground-dim font-mono">
 													{runDate.toLocaleString()} ({timeAgo})
 												</div>
 												<div className="flex flex-wrap gap-2 mt-2">
 													{run.providers.map((p) => (
 														<span
 															key={p}
-															className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px]"
+															className="px-2 py-0.5 bg-primary/10 border border-primary/30 text-primary-light text-[10px] rounded"
 														>
 															{p}
 														</span>
@@ -1049,7 +1051,7 @@ function RunPicker({
 													{run.benchmarks.map((b) => (
 														<span
 															key={b}
-															className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 text-[10px]"
+															className="px-2 py-0.5 bg-violet-500/10 border border-violet-500/30 text-violet-400 text-[10px] rounded"
 														>
 															{b}
 														</span>
@@ -1058,7 +1060,7 @@ function RunPicker({
 											</div>
 											<div className="text-right">
 												{run.result_count !== undefined && (
-													<div className="text-gray-400 text-xs">
+													<div className="text-foreground-muted text-xs">
 														{run.result_count} results
 													</div>
 												)}
@@ -1331,12 +1333,13 @@ export function App() {
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center py-20">
-				<div className="flex items-center gap-3 text-gray-500">
-					<Icon name="lucide:loader-2" className="w-6 h-6 animate-spin" />
-					<span className="text-sm font-mono uppercase tracking-wider">
-						Loading Results...
-					</span>
+			<div className="flex flex-col items-center justify-center py-20 gap-4">
+				<div className="w-12 h-12 flex items-center justify-center gradient-primary rounded-xl glow-primary">
+					<Icon name="lucide:brain" className="w-6 h-6 text-white animate-pulse" />
+				</div>
+				<div className="flex flex-col items-center gap-2">
+					<span className="text-sm font-medium text-foreground">Loading Results</span>
+					<span className="text-xs text-foreground-dim font-mono">Fetching benchmark data...</span>
 				</div>
 			</div>
 		);
@@ -1345,11 +1348,13 @@ export function App() {
 	if (error) {
 		return (
 			<div className="flex flex-col items-center justify-center py-20 gap-4">
-				<Icon name="lucide:alert-circle" className="w-12 h-12 text-red-500" />
+				<div className="w-12 h-12 flex items-center justify-center bg-red-500/15 rounded-xl">
+					<Icon name="lucide:alert-circle" className="w-6 h-6 text-red-400" />
+				</div>
 				<div className="text-red-400 font-mono text-sm">Error: {error}</div>
 				<button
 					onClick={() => window.location.reload()}
-					className="px-6 py-2 bg-hex-surface border border-white/20 hover:border-accent text-white text-xs font-bold uppercase tracking-wider clip-chamfer"
+					className="px-5 py-2.5 bg-sm-surface border border-sm-border hover:border-primary text-foreground text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors"
 				>
 					Retry
 				</button>
@@ -1360,7 +1365,7 @@ export function App() {
 	if (!data) {
 		return (
 			<div className="flex items-center justify-center py-20">
-				<div className="text-gray-500 font-mono text-sm">No data found.</div>
+				<div className="text-foreground-muted font-mono text-sm">No data found.</div>
 			</div>
 		);
 	}

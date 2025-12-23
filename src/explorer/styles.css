@@ -1,21 +1,43 @@
+/* Supermemory Design System - MemoryBench Explorer */
+
 :root {
-	--bg-primary: #0f172a;
-	--bg-secondary: #1e293b;
-	--text-primary: #f8fafc;
-	--text-secondary: #94a3b8;
-	--accent: #3b82f6;
+	/* Supermemory color palette (converted from OKLch) */
+	--sm-bg: #0f0f14;
+	--sm-card: #16161d;
+	--sm-surface: #1e1e26;
+	--sm-elevated: #252530;
+	--sm-border: rgba(255, 255, 255, 0.08);
+	--sm-border-bright: rgba(255, 255, 255, 0.12);
+
+	/* Primary/Accent colors */
+	--primary: #6366f1;
+	--primary-light: #818cf8;
+	--primary-dark: #4f46e5;
+	--primary-glow: rgba(99, 102, 241, 0.5);
+	--primary-dim: rgba(99, 102, 241, 0.1);
+
+	/* Text colors */
+	--foreground: #f4f4f6;
+	--foreground-muted: #a1a1aa;
+	--foreground-dim: #71717a;
+
+	/* Status colors */
 	--success: #22c55e;
 	--error: #ef4444;
 	--warning: #f59e0b;
-	--border: #334155;
+
+	/* Spacing */
+	--radius: 0.75rem;
 }
 
 body {
 	margin: 0;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-		Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-	background-color: var(--bg-primary);
-	color: var(--text-primary);
+	font-family: "Space Grotesk", "Inter", system-ui, -apple-system,
+		BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	background-color: var(--sm-bg);
+	color: var(--foreground);
+	letter-spacing: -0.01em;
+	-webkit-font-smoothing: antialiased;
 }
 
 .container {
@@ -26,7 +48,7 @@ body {
 
 header {
 	margin-bottom: 2rem;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--sm-border);
 	padding-bottom: 1rem;
 }
 
@@ -38,23 +60,30 @@ header {
 }
 
 .card {
-	background-color: var(--bg-secondary);
+	background-color: var(--sm-card);
 	padding: 1.5rem;
-	border-radius: 0.5rem;
-	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	border: 1px solid var(--sm-border);
+	transition: border-color 0.2s ease;
+}
+
+.card:hover {
+	border-color: var(--sm-border-bright);
 }
 
 .card h3 {
 	margin-top: 0;
-	color: var(--text-secondary);
-	font-size: 0.875rem;
+	color: var(--foreground-muted);
+	font-size: 0.75rem;
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
+	font-weight: 500;
 }
 
 .card .value {
 	font-size: 2rem;
-	font-weight: bold;
+	font-weight: 600;
+	color: var(--foreground);
 }
 
 .filters {
@@ -72,22 +101,34 @@ header {
 
 .filter-group label {
 	font-size: 0.75rem;
-	color: var(--text-secondary);
+	color: var(--foreground-muted);
 }
 
 select {
-	background-color: var(--bg-secondary);
-	color: var(--text-primary);
-	border: 1px solid var(--border);
-	padding: 0.5rem;
-	border-radius: 0.25rem;
+	background-color: var(--sm-surface);
+	color: var(--foreground);
+	border: 1px solid var(--sm-border);
+	padding: 0.5rem 1rem;
+	border-radius: var(--radius);
+	font-family: inherit;
+	transition: border-color 0.2s ease;
+}
+
+select:hover {
+	border-color: var(--sm-border-bright);
+}
+
+select:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 2px var(--primary-dim);
 }
 
 table {
 	width: 100%;
 	border-collapse: collapse;
-	background-color: var(--bg-secondary);
-	border-radius: 0.5rem;
+	background-color: var(--sm-card);
+	border-radius: var(--radius);
 	overflow: hidden;
 }
 
@@ -95,46 +136,55 @@ th,
 td {
 	padding: 1rem;
 	text-align: left;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--sm-border);
 }
 
 th {
-	background-color: rgba(0, 0, 0, 0.2);
-	color: var(--text-secondary);
+	background-color: var(--sm-surface);
+	color: var(--foreground-muted);
 	font-weight: 500;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
 	cursor: pointer;
+	transition: color 0.2s ease;
 }
 
 th:hover {
-	color: var(--text-primary);
+	color: var(--foreground);
+}
+
+tr {
+	transition: background-color 0.2s ease;
 }
 
 tr:hover {
-	background-color: rgba(255, 255, 255, 0.05);
+	background-color: var(--sm-surface);
 }
 
 .status-badge {
-	padding: 0.25rem 0.5rem;
-	border-radius: 1rem;
+	padding: 0.25rem 0.75rem;
+	border-radius: 9999px;
 	font-size: 0.75rem;
-	font-weight: 600;
+	font-weight: 500;
 	text-transform: uppercase;
+	letter-spacing: 0.02em;
 }
 
 .status-passed {
-	background-color: rgba(34, 197, 94, 0.2);
+	background-color: rgba(34, 197, 94, 0.15);
 	color: #4ade80;
 }
 .status-failed {
-	background-color: rgba(239, 68, 68, 0.2);
+	background-color: rgba(239, 68, 68, 0.15);
 	color: #f87171;
 }
 .status-error {
-	background-color: rgba(239, 68, 68, 0.2);
+	background-color: rgba(239, 68, 68, 0.15);
 	color: #f87171;
 }
 .status-skipped {
-	background-color: rgba(245, 158, 11, 0.2);
+	background-color: rgba(245, 158, 11, 0.15);
 	color: #fbbf24;
 }
 
@@ -144,7 +194,8 @@ tr:hover {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: rgba(0, 0, 0, 0.7);
+	background-color: rgba(0, 0, 0, 0.75);
+	backdrop-filter: blur(4px);
 	display: flex;
 	justify-content: flex-end;
 	z-index: 100;
@@ -152,31 +203,76 @@ tr:hover {
 
 .drilldown-panel {
 	width: 100%;
-	max-width: 600px;
-	background-color: var(--bg-secondary);
+	max-width: 640px;
+	background-color: var(--sm-card);
 	height: 100%;
 	padding: 2rem;
 	overflow-y: auto;
-	box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
+	box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+	border-left: 1px solid var(--sm-border);
 }
 
 pre {
-	background-color: var(--bg-primary);
+	background-color: var(--sm-bg);
 	padding: 1rem;
-	border-radius: 0.5rem;
+	border-radius: var(--radius);
 	overflow-x: auto;
 	font-size: 0.875rem;
+	font-family: "Space Mono", ui-monospace, monospace;
+	border: 1px solid var(--sm-border);
 }
 
 .close-btn {
 	background: none;
 	border: none;
-	color: var(--text-secondary);
+	color: var(--foreground-muted);
 	font-size: 1.5rem;
 	cursor: pointer;
 	float: right;
+	transition: color 0.2s ease;
 }
 
 .close-btn:hover {
-	color: var(--text-primary);
+	color: var(--foreground);
+}
+
+/* Button styles */
+.btn-primary {
+	background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+	color: white;
+	border: none;
+	padding: 0.5rem 1rem;
+	border-radius: var(--radius);
+	font-weight: 500;
+	cursor: pointer;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover {
+	opacity: 0.9;
+	transform: translateY(-1px);
+}
+
+.btn-secondary {
+	background: var(--sm-surface);
+	color: var(--foreground);
+	border: 1px solid var(--sm-border);
+	padding: 0.5rem 1rem;
+	border-radius: var(--radius);
+	font-weight: 500;
+	cursor: pointer;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+	border-color: var(--primary);
+	background-color: var(--sm-elevated);
+}
+
+/* Gradient text */
+.gradient-text {
+	background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
 }

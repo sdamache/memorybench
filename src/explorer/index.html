@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MemoryBench Explorer</title>
+    <title>MemoryBench Explorer | Supermemory</title>
 
-    <!-- Fonts -->
+    <!-- Fonts - Supermemory uses Space Grotesk + Space Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,35 +16,67 @@
     <!-- Icons -->
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
 
-    <!-- Tailwind Configuration -->
+    <!-- Tailwind Configuration - Supermemory Design System -->
     <script>
       tailwind.config = {
           theme: {
               extend: {
                   fontFamily: {
-                      sans: ['Inter', 'sans-serif'],
-                      mono: ['JetBrains Mono', 'monospace'],
+                      sans: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+                      mono: ['Space Mono', 'ui-monospace', 'monospace'],
+                  },
+                  letterSpacing: {
+                      tighter: '-0.02em',
+                      tight: '-0.01em',
                   },
                   colors: {
-                      accent: {
-                          DEFAULT: '#E0FF00',
-                          glow: 'rgba(224, 255, 0, 0.5)',
-                          dim: 'rgba(224, 255, 0, 0.1)'
+                      // Supermemory color palette (converted from OKLch)
+                      primary: {
+                          DEFAULT: '#6366f1', // indigo primary
+                          light: '#818cf8',
+                          dark: '#4f46e5',
+                          foreground: '#ffffff'
                       },
-                      hex: {
-                           bg: '#050505',
-                           card: '#0F0F0F',
-                           surface: '#1B2124',
-                           border: 'rgba(255, 255, 255, 0.1)'
+                      accent: {
+                          DEFAULT: '#6366f1',
+                          glow: 'rgba(99, 102, 241, 0.5)',
+                          dim: 'rgba(99, 102, 241, 0.1)',
+                          muted: '#e0e7ff'
+                      },
+                      sm: {
+                          bg: '#0f0f14',
+                          card: '#16161d',
+                          surface: '#1e1e26',
+                          elevated: '#252530',
+                          border: 'rgba(255, 255, 255, 0.08)',
+                          'border-bright': 'rgba(255, 255, 255, 0.12)'
+                      },
+                      foreground: {
+                          DEFAULT: '#f4f4f6',
+                          muted: '#a1a1aa',
+                          dim: '#71717a'
                       }
                   },
+                  borderRadius: {
+                      'sm-default': '0.75rem',
+                  },
                   animation: {
-                      'spin-slow': 'spin-hex 8s linear infinite',
+                      'fade-in': 'fadeIn 0.3s ease-out',
+                      'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                      'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
                   },
                   keyframes: {
-                      'spin-hex': {
-                          '0%': { transform: 'rotate(0deg)' },
-                          '100%': { transform: 'rotate(360deg)' }
+                      fadeIn: {
+                          '0%': { opacity: '0' },
+                          '100%': { opacity: '1' }
+                      },
+                      slideUp: {
+                          '0%': { transform: 'translateY(10px)', opacity: '0' },
+                          '100%': { transform: 'translateY(0)', opacity: '1' }
+                      },
+                      pulseSoft: {
+                          '0%, 100%': { opacity: '1' },
+                          '50%': { opacity: '0.6' }
                       }
                   }
               }
@@ -54,85 +86,102 @@
 
     <style>
       body {
-          background-color: #050505;
-          color: #E5E5E5;
+          background-color: #0f0f14;
+          color: #f4f4f6;
           font-feature-settings: "ss01", "ss04";
           -webkit-font-smoothing: antialiased;
+          letter-spacing: -0.01em;
       }
 
+      /* Subtle dot grid pattern */
       .bg-grid {
-          background-image:
-            linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-          background-size: 80px 80px;
-          background-position: -1px -1px;
-          opacity: 0.15;
+          background-image: radial-gradient(circle at 1px 1px, rgba(99, 102, 241, 0.08) 1px, transparent 0);
+          background-size: 32px 32px;
       }
 
-      /* HexOS Geometries */
-      .clip-hex {
-          clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      }
-      .clip-chamfer {
-          clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+      /* Supermemory rounded corners style */
+      .rounded-sm-default {
+          border-radius: 0.75rem;
       }
 
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: #050505; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #E0FF00; }
+      /* Custom Scrollbar - Supermemory style */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: #0f0f14; }
+      ::-webkit-scrollbar-thumb { background: #2d2d3a; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
 
       /* Utilities */
-      .glass { background: rgba(5, 5, 5, 0.8); backdrop-filter: blur(12px); }
-
-      /* HexOS Animations */
-      @keyframes ripple-out {
-        0% { transform: scale(0.8); opacity: 0.5; border-width: 2px; }
-        100% { transform: scale(1.4); opacity: 0; border-width: 0px; }
+      .glass {
+          background: rgba(15, 15, 20, 0.85);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
       }
+
+      /* Supermemory gradient accents */
+      .gradient-primary {
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      }
+      .gradient-subtle {
+          background: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+      }
+
+      /* Animations */
       @keyframes reveal-scale {
         0% { transform: scale(0.98); opacity: 0; }
         100% { transform: scale(1); opacity: 1; }
       }
-      .animate-ripple { animation: ripple-out 0.6s ease-out forwards; }
       .animate-reveal { animation: reveal-scale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+      /* Focus ring style */
+      .focus-ring:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+      }
+
+      /* Glow effect for primary elements */
+      .glow-primary {
+          box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+      }
     </style>
 </head>
-<body class="selection:bg-[#E0FF00] selection:text-[#050505] min-h-screen flex flex-col bg-[#050505] font-sans">
+<body class="selection:bg-primary selection:text-white min-h-screen flex flex-col bg-sm-bg font-sans">
     <!-- Background Grid -->
     <div class="fixed inset-0 bg-grid pointer-events-none z-0"></div>
 
-    <!-- Navigation -->
-    <nav class="sticky top-0 z-50 glass border-b border-white/10 w-full">
+    <!-- Navigation - Supermemory style -->
+    <nav class="sticky top-0 z-50 glass border-b border-sm-border w-full">
       <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <!-- HexOS Logo -->
+        <!-- Logo -->
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 flex items-center justify-center bg-hex-surface border border-white/20 text-accent clip-hex">
-            <span class="iconify w-4 h-4" data-icon="lucide:hexagon"></span>
+          <div class="w-9 h-9 flex items-center justify-center gradient-primary rounded-lg shadow-lg">
+            <span class="iconify w-5 h-5 text-white" data-icon="lucide:brain"></span>
           </div>
           <div class="flex flex-col">
-            <span class="text-sm font-semibold tracking-tight text-white uppercase">
+            <span class="text-sm font-semibold tracking-tight text-foreground">
               MemoryBench
             </span>
-            <span class="text-[10px] text-gray-500 font-mono tracking-widest uppercase">
-              Explorer v0.1
+            <span class="text-[10px] text-foreground-dim font-mono tracking-wide">
+              by supermemory.ai
             </span>
           </div>
         </div>
 
         <!-- Dashboard Controls -->
-        <div class="flex items-center gap-6 text-xs font-medium tracking-tight text-gray-400">
-          <a href="#" class="hover:text-accent transition-colors flex items-center gap-2">
+        <div class="flex items-center gap-6 text-sm font-medium text-foreground-muted">
+          <a href="#" class="hover:text-primary transition-colors flex items-center gap-2">
             <span class="iconify" data-icon="lucide:layout-dashboard"></span>
             Dashboard
           </a>
-          <a href="#" class="hover:text-accent transition-colors flex items-center gap-2">
+          <a href="#" class="hover:text-primary transition-colors flex items-center gap-2">
             <span class="iconify" data-icon="lucide:list"></span>
             Runs
           </a>
-          <div class="h-4 w-px bg-white/10"></div>
-          <a href="https://github.com/sdamache/memorybench" class="hover:text-white transition-colors">
+          <div class="h-4 w-px bg-sm-border"></div>
+          <a href="https://supermemory.ai" class="hover:text-primary transition-colors flex items-center gap-2">
+            <span class="iconify" data-icon="lucide:external-link"></span>
+            Supermemory
+          </a>
+          <a href="https://github.com/sdamache/memorybench" class="hover:text-foreground transition-colors">
             <span class="iconify w-5 h-5" data-icon="lucide:github"></span>
           </a>
         </div>
@@ -140,30 +189,38 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-6 py-8 flex-1 w-full">
+    <main class="max-w-7xl mx-auto px-6 py-8 flex-1 w-full relative z-10">
       <!-- React Mount Point -->
-      <div id="root" class="space-y-8">
+      <div id="root" class="space-y-6">
         <!-- Loading State -->
-        <div class="flex items-center justify-center py-20">
-          <div class="flex items-center gap-3 text-gray-500">
-            <span class="iconify w-6 h-6 animate-spin" data-icon="lucide:loader-2"></span>
-            <span class="text-sm font-mono uppercase tracking-wider">Loading Explorer...</span>
+        <div class="flex flex-col items-center justify-center py-20 gap-4">
+          <div class="w-12 h-12 flex items-center justify-center gradient-primary rounded-xl glow-primary">
+            <span class="iconify w-6 h-6 text-white animate-pulse" data-icon="lucide:brain"></span>
+          </div>
+          <div class="flex flex-col items-center gap-2">
+            <span class="text-sm font-medium text-foreground">Loading Explorer</span>
+            <span class="text-xs text-foreground-dim font-mono">Initializing memory bench...</span>
           </div>
         </div>
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-white/10 bg-[#0A0A0A] py-8">
-      <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500 font-mono">
-        <p>HexOS Design System v2.2 // MemoryBench Explorer</p>
+    <!-- Footer - Supermemory style -->
+    <footer class="border-t border-sm-border bg-sm-card py-6 relative z-10">
+      <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-foreground-muted">
+        <div class="flex items-center gap-2">
+          <span class="iconify text-primary" data-icon="lucide:brain"></span>
+          <span>MemoryBench Explorer</span>
+          <span class="text-foreground-dim">|</span>
+          <a href="https://supermemory.ai" class="hover:text-primary transition-colors">supermemory.ai</a>
+        </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
-            <div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
-            <span>System Online</span>
+            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse-soft"></div>
+            <span>Connected</span>
           </div>
-          <div class="w-px h-3 bg-white/10"></div>
-          <span>React v19</span>
+          <div class="w-px h-3 bg-sm-border"></div>
+          <span class="font-mono text-foreground-dim">v0.1</span>
         </div>
       </div>
     </footer>
