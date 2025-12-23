@@ -4,6 +4,28 @@ import { createRoot } from "react-dom/client";
 import type { ResultRecord } from "../results/schema";
 import type { ExplorerData, RunInfo } from "./types";
 
+const JUDGE_METRIC_KEYS = ["correctness", "faithfulness", "type_specific"] as const;
+const RETRIEVAL_METRIC_KEYS = [
+	"retrieval_precision",
+	"retrieval_recall",
+	"retrieval_f1",
+	"retrieval_coverage",
+	"retrieval_ndcg",
+	"retrieval_map",
+] as const;
+
+const METRIC_LABELS: Record<string, string> = {
+	correctness: "Corr",
+	faithfulness: "Faith",
+	type_specific: "Type",
+	retrieval_precision: "Prec",
+	retrieval_recall: "Rec",
+	retrieval_f1: "F1",
+	retrieval_coverage: "Cov",
+	retrieval_ndcg: "nDCG",
+	retrieval_map: "MAP",
+};
+
 // --- Icon Component (uses Iconify loaded in HTML) ---
 // Use a wrapper div to prevent React/Iconify DOM conflicts
 function Icon({ name, className = "" }: { name: string; className?: string }) {
@@ -76,8 +98,8 @@ function Dashboard({ data }: { data: ExplorerData }) {
 	const { totals } = data.summary;
 	const passRate =
 		totals.cases > 0 ? ((totals.passed / totals.cases) * 100).toFixed(1) : "0";
-	const avgDuration =
-		totals.cases > 0 ? Math.round(totals.duration_ms / totals.cases) : 0;
+	const avgDurationSeconds =
+		totals.cases > 0 ? totals.duration_ms / totals.cases / 1000 : 0;
 
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -91,8 +113,8 @@ function Dashboard({ data }: { data: ExplorerData }) {
 			<MetricCard
 				icon="lucide:clock"
 				label="Avg Duration"
-				value={avgDuration.toString()}
-				unit="ms"
+				value={avgDurationSeconds.toFixed(1)}
+				unit="s"
 				subtext="Per case"
 			/>
 			<MetricCard
@@ -153,6 +175,173 @@ function MetricCard({
 				<div className={`mt-2 text-xs font-mono ${subtextColor}`}>{subtext}</div>
 			)}
 		</div>
+	);
+}
+
+function ScoreOverview({
+	data,
+	selectedProvider,
+	selectedBenchmark,
+}: {
+	data: ExplorerData;
+	selectedProvider: string;
+	selectedBenchmark: string;
+}) {
+	const [view, setView] = useState<"judge" | "retrieval">("judge");
+
+	const combinations = useMemo(() => {
+		const filtered = data.summary.by_combination.filter((combo) => {
+			if (selectedProvider !== "all" && combo.provider_name !== selectedProvider)
+				return false;
+			if (selectedBenchmark !== "all" && combo.benchmark_name !== selectedBenchmark)
+				return false;
+			return true;
+		});
+
+		return filtered.slice().sort((a, b) => {
+			const providerCmp = a.provider_name.localeCompare(b.provider_name);
+			if (providerCmp !== 0) return providerCmp;
+			return a.benchmark_name.localeCompare(b.benchmark_name);
+		});
+	}, [data.summary.by_combination, selectedBenchmark, selectedProvider]);
+
+	const metricCandidates = useMemo(() => {
+		return view === "judge" ? [...JUDGE_METRIC_KEYS] : [...RETRIEVAL_METRIC_KEYS];
+	}, [view]);
+
+	const visibleMetrics = useMemo(() => {
+		return metricCandidates.filter((metricKey) =>
+			combinations.some((combo) => combo.score_averages[metricKey] !== undefined),
+		);
+	}, [combinations, metricCandidates]);
+
+	if (combinations.length === 0) return null;
+
+	return (
+		<div className="overflow-hidden border border-white/10 bg-hex-card">
+			<div className="p-4 border-b border-white/10 flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<Icon name="lucide:bar-chart-2" className="text-accent" />
+					<span className="text-xs font-bold uppercase tracking-wider text-white">
+						Average Scores
+					</span>
+				</div>
+
+				<div className="flex items-center gap-2">
+					<ToggleButton
+						active={view === "judge"}
+						onClick={() => setView("judge")}
+					>
+						Judge
+					</ToggleButton>
+					<ToggleButton
+						active={view === "retrieval"}
+						onClick={() => setView("retrieval")}
+					>
+						Retrieval
+					</ToggleButton>
+				</div>
+			</div>
+
+			{visibleMetrics.length === 0 ? (
+				<div className="p-6 text-xs text-gray-500 font-mono">
+					No metrics available for this view.
+				</div>
+			) : (
+				<div className="overflow-x-auto">
+					<table className="w-full text-left border-collapse text-xs font-mono">
+						<thead>
+							<tr className="border-b border-white/10 bg-white/5 text-gray-500 uppercase tracking-wider">
+								<th className="p-4 font-bold">Provider</th>
+								<th className="p-4 font-bold">Benchmark</th>
+								<th className="p-4 font-bold text-right">Cases</th>
+								<th className="p-4 font-bold text-right">Pass</th>
+								<th className="p-4 font-bold text-right">Avg Dur</th>
+								{visibleMetrics.map((metricKey) => (
+									<th
+										key={metricKey}
+										className="p-4 font-bold text-right"
+										title={metricKey}
+									>
+										{METRIC_LABELS[metricKey] ?? metricKey}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-white/5">
+							{combinations.map((combo) => {
+								const pass =
+									combo.counts.cases > 0
+										? (combo.counts.passed / combo.counts.cases) * 100
+										: 0;
+								const avgMs =
+									combo.counts.cases > 0
+										? combo.duration_ms / combo.counts.cases
+										: 0;
+								const avg = formatDurationMs(avgMs);
+
+								return (
+									<tr
+										key={`${combo.provider_name}:${combo.benchmark_name}`}
+										className="hover:bg-white/5 transition-colors"
+									>
+										<td className="p-4 text-gray-300">{combo.provider_name}</td>
+										<td className="p-4 text-gray-400">{combo.benchmark_name}</td>
+										<td className="p-4 text-right text-gray-500">
+											{combo.counts.cases.toLocaleString()}
+										</td>
+										<td className="p-4 text-right text-gray-500">
+											{pass.toFixed(1)}%
+										</td>
+										<td className="p-4 text-right text-gray-500">
+											{avg.value}
+											<span className="text-gray-600 ml-1">{avg.unit}</span>
+										</td>
+										{visibleMetrics.map((metricKey) => {
+											const scoreValue = combo.score_averages[metricKey];
+											return (
+												<td
+													key={metricKey}
+													className="p-4 text-right text-gray-300"
+												>
+													{scoreValue === undefined
+														? "—"
+														: formatMetricValue(metricKey, scoreValue, 1)}
+												</td>
+											);
+										})}
+									</tr>
+								);
+							})}
+						</tbody>
+					</table>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function ToggleButton({
+	active,
+	onClick,
+	children,
+}: {
+	active: boolean;
+	onClick: () => void;
+	children: React.ReactNode;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={`px-3 py-1.5 border text-[10px] font-bold uppercase tracking-wider transition-colors clip-chamfer ${
+				active
+					? "bg-accent text-black border-accent"
+					: "bg-hex-surface text-gray-300 border-white/10 hover:border-accent/50 hover:text-white"
+			}`}
+		>
+			{children}
+		</button>
 	);
 }
 
@@ -286,6 +475,117 @@ function FilterSelect({
 	);
 }
 
+/**
+ * Get score color based on value (0-1 scale)
+ */
+function getScoreColor(value: number): string {
+	if (!Number.isFinite(value)) return "text-gray-500";
+	if (value >= 0.8) return "text-emerald-400";
+	if (value >= 0.5) return "text-amber-400";
+	return "text-red-400";
+}
+
+/**
+ * Get background color class for score badge
+ */
+function getScoreBg(value: number): string {
+	if (!Number.isFinite(value)) return "bg-gray-500/10";
+	if (value >= 0.8) return "bg-emerald-500/15";
+	if (value >= 0.5) return "bg-amber-500/15";
+	return "bg-red-500/15";
+}
+
+/**
+ * Mini score dot indicator
+ */
+function ScoreDot({ value, label }: { value: number | undefined; label: string }) {
+	if (value === undefined) return null;
+	const color = value >= 0.8 ? "bg-emerald-400" : value >= 0.5 ? "bg-amber-400" : "bg-red-400";
+	return (
+		<div className="flex flex-col items-center gap-0.5" title={`${label}: ${(value * 100).toFixed(0)}%`}>
+			<div className={`w-2 h-2 rounded-full ${color}`} />
+		</div>
+	);
+}
+
+function ScoresCell({ scores }: { scores: Record<string, number> }) {
+	const entries = sortScoreEntries(scores);
+	if (entries.length === 0) return <span className="text-[10px] text-gray-600">—</span>;
+
+	const correctness = scores.correctness;
+	const faithfulness = scores.faithfulness;
+
+	// Retrieval metrics
+	const hasRetrieval = scores.retrieval_precision !== undefined ||
+		scores.retrieval_recall !== undefined ||
+		scores.retrieval_f1 !== undefined;
+
+	// Calculate average retrieval score for summary
+	const retrievalScores = [
+		scores.retrieval_precision,
+		scores.retrieval_recall,
+		scores.retrieval_f1,
+		scores.retrieval_coverage,
+		scores.retrieval_ndcg,
+		scores.retrieval_map,
+	].filter((v): v is number => v !== undefined && Number.isFinite(v));
+
+	const avgRetrieval = retrievalScores.length > 0
+		? retrievalScores.reduce((a, b) => a + b, 0) / retrievalScores.length
+		: undefined;
+
+	// Build detailed tooltip
+	const tooltipLines = entries.map(
+		([key, value]) => `${key}: ${formatMetricValue(key, value, 1)}`
+	);
+	const tooltip = tooltipLines.join("\n");
+
+	return (
+		<div className="flex items-center justify-end gap-2" title={tooltip}>
+			{/* Primary metrics as compact badges */}
+			{correctness !== undefined && (
+				<div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(correctness)}`}>
+					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">C</span>
+					<span className={`text-xs font-semibold tabular-nums ${getScoreColor(correctness)}`}>
+						{(correctness * 100).toFixed(0)}
+					</span>
+				</div>
+			)}
+
+			{faithfulness !== undefined && (
+				<div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(faithfulness)}`}>
+					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">F</span>
+					<span className={`text-xs font-semibold tabular-nums ${getScoreColor(faithfulness)}`}>
+						{(faithfulness * 100).toFixed(0)}
+					</span>
+				</div>
+			)}
+
+			{/* Retrieval summary as dot cluster */}
+			{hasRetrieval && avgRetrieval !== undefined && (
+				<div
+					className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(avgRetrieval)}`}
+					title={`Retrieval Avg: ${(avgRetrieval * 100).toFixed(0)}%\nP: ${scores.retrieval_precision !== undefined ? (scores.retrieval_precision * 100).toFixed(0) : '—'}%\nR: ${scores.retrieval_recall !== undefined ? (scores.retrieval_recall * 100).toFixed(0) : '—'}%\nF1: ${scores.retrieval_f1 !== undefined ? (scores.retrieval_f1 * 100).toFixed(0) : '—'}%`}
+				>
+					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">R</span>
+					<div className="flex gap-0.5">
+						<ScoreDot value={scores.retrieval_precision} label="Precision" />
+						<ScoreDot value={scores.retrieval_recall} label="Recall" />
+						<ScoreDot value={scores.retrieval_f1} label="F1" />
+					</div>
+				</div>
+			)}
+
+			{/* Extra metrics indicator */}
+			{entries.length > 3 && (
+				<span className="text-[9px] text-gray-600 font-mono">
+					+{entries.length - 3}
+				</span>
+			)}
+		</div>
+	);
+}
+
 // --- Results Table ---
 function ResultsTable({
 	results,
@@ -387,26 +687,17 @@ function ResultsTable({
 								</td>
 								<td className="p-4 text-white font-medium">{result.case_id}</td>
 								<td className="p-4 text-gray-300">{result.provider_name}</td>
-								<td className="p-4 text-gray-400">{result.benchmark_name}</td>
-								<td className="p-4 text-right text-gray-500">
-									{result.duration_ms.toFixed(0)}ms
-								</td>
-								<td className="p-4 text-right">
-									{Object.entries(result.scores || {})
-										.slice(0, 2)
-										.map(([name, score]) => (
-											<div
-												key={name}
-												className={`text-[10px] ${(score as number) >= 0.7 ? "text-green-400" : "text-red-400"}`}
-											>
-												{name}: {((score as number) * 100).toFixed(0)}%
-											</div>
-										))}
-								</td>
-								<td className="p-4 text-center text-gray-600 group-hover:text-accent">
-									<Icon name="lucide:chevron-right" />
-								</td>
-							</tr>
+									<td className="p-4 text-gray-400">{result.benchmark_name}</td>
+									<td className="p-4 text-right text-gray-500">
+										{formatDurationLabel(result.duration_ms)}
+									</td>
+									<td className="p-4 text-right">
+										<ScoresCell scores={result.scores} />
+									</td>
+									<td className="p-4 text-center text-gray-600 group-hover:text-accent">
+										<Icon name="lucide:chevron-right" />
+									</td>
+								</tr>
 						))
 					)}
 				</tbody>
@@ -536,7 +827,7 @@ function Drilldown({
 							<MetadataRow label="Benchmark" value={result.benchmark_name} />
 							<MetadataRow
 								label="Duration"
-								value={`${result.duration_ms.toFixed(0)}ms`}
+								value={formatDurationLabel(result.duration_ms)}
 							/>
 							<MetadataRow label="Run ID" value={result.run_id} />
 						</div>
@@ -550,28 +841,33 @@ function Drilldown({
 								<span className="text-xs font-bold uppercase tracking-wider text-white">
 									Scores
 								</span>
-							</div>
-							<div className="grid grid-cols-2 gap-4">
-								{Object.entries(scores).map(([name, scoreValue]) => {
-									const score =
-										typeof scoreValue === "number" ? scoreValue : 0;
-									return (
-										<div
-											key={name}
-											className="p-3 bg-black/30 border border-white/5"
-										>
-											<div className="text-[10px] text-gray-500 uppercase mb-1">
-												{name}
-											</div>
+								</div>
+								<div className="grid grid-cols-2 gap-4">
+									{sortScoreEntries(scores).map(([name, score]) => {
+										const ratioMetric = isRatioMetricValue(score);
+										return (
 											<div
-												className={`text-xl font-medium ${score >= 0.7 ? "text-green-400" : "text-red-400"}`}
+												key={name}
+												className="p-3 bg-black/30 border border-white/5"
 											>
-												{(score * 100).toFixed(1)}%
+												<div className="text-[10px] text-gray-500 uppercase mb-1">
+													{name}
+												</div>
+												<div
+													className={`text-xl font-medium ${
+														ratioMetric
+															? score >= 0.7
+																? "text-green-400"
+																: "text-red-400"
+															: "text-white"
+													}`}
+												>
+													{formatMetricValue(name, score, 1)}
+												</div>
 											</div>
-										</div>
-									);
-								})}
-							</div>
+										);
+									})}
+								</div>
 						</div>
 					) : null}
 
@@ -780,6 +1076,85 @@ function RunPicker({
 }
 
 // --- Utility Functions ---
+function formatDurationMs(ms: number): { value: string; unit: "ms" | "s" } {
+	if (!Number.isFinite(ms) || ms <= 0) return { value: "0", unit: "ms" };
+
+	if (ms < 1000) {
+		return { value: ms.toFixed(0), unit: "ms" };
+	}
+
+	const seconds = ms / 1000;
+	const decimals = seconds < 10 ? 2 : seconds < 100 ? 1 : 0;
+	return { value: seconds.toFixed(decimals), unit: "s" };
+}
+
+function formatDurationLabel(ms: number): string {
+	const formatted = formatDurationMs(ms);
+	return `${formatted.value}${formatted.unit}`;
+}
+
+// Metrics that should always be displayed as percentages (0-1 scale)
+const RATIO_METRICS: Set<string> = new Set([
+	...JUDGE_METRIC_KEYS,
+	...RETRIEVAL_METRIC_KEYS,
+]);
+
+function isRatioMetric(metricKey: string): boolean {
+	return RATIO_METRICS.has(metricKey);
+}
+
+function isRatioMetricValue(value: number): boolean {
+	return Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+function formatMetricPercent(value: number, decimals: number): string {
+	if (!Number.isFinite(value)) return "—";
+	// Cap at 100% for display (handles buggy old data with values > 1)
+	const capped = Math.min(value, 1);
+	return (capped * 100).toFixed(decimals);
+}
+
+function formatMetricValue(metricKey: string, value: number, decimals: number): string {
+	if (!Number.isFinite(value)) return "—";
+
+	// Count metrics stay as raw numbers
+	if (metricKey.endsWith("_count")) {
+		return value.toFixed(0);
+	}
+
+	// Known ratio metrics always show as percentage (handles buggy old data)
+	if (isRatioMetric(metricKey)) {
+		return `${formatMetricPercent(value, decimals)}%`;
+	}
+
+	// Other metrics: show as percentage if 0-1, otherwise raw
+	if (isRatioMetricValue(value)) {
+		return `${formatMetricPercent(value, decimals)}%`;
+	}
+
+	return value.toFixed(2);
+}
+
+function sortScoreEntries(scores: Record<string, number>): Array<[string, number]> {
+	const order = [...JUDGE_METRIC_KEYS, ...RETRIEVAL_METRIC_KEYS];
+	const indexByKey = new Map<string, number>();
+	for (let i = 0; i < order.length; i += 1) {
+		const key = order[i];
+		if (key) indexByKey.set(key, i);
+	}
+
+	return Object.entries(scores)
+		.filter(([, value]) => Number.isFinite(value))
+		.sort(([keyA], [keyB]) => {
+			const idxA = indexByKey.get(keyA);
+			const idxB = indexByKey.get(keyB);
+			if (idxA !== undefined && idxB !== undefined) return idxA - idxB;
+			if (idxA !== undefined) return -1;
+			if (idxB !== undefined) return 1;
+			return keyA.localeCompare(keyB);
+		});
+}
+
 function getTimeAgo(date: Date): string {
 	const now = new Date();
 	const diffMs = now.getTime() - date.getTime();
@@ -994,6 +1369,11 @@ export function App() {
 		<>
 			<Header data={data} onSelectRun={handleOpenRunPicker} onExport={handleExport} />
 			<Dashboard data={data} />
+			<ScoreOverview
+				data={data}
+				selectedProvider={selectedProvider}
+				selectedBenchmark={selectedBenchmark}
+			/>
 			<Filters
 				providers={availableProviders}
 				benchmarks={availableBenchmarks}

@@ -213,10 +213,12 @@ ${typeSection}EVALUATION CRITERIA:
    - 0.1-0.3: Contains some relevant information but mostly wrong
    - 0.0: Completely wrong or irrelevant
 
-2. **Faithfulness (0-1)**: Is the answer grounded in the retrieved context?
-   - 1.0: Fully supported by retrieved evidence
-   - 0.5: Partially supported
-   - 0.0: Not supported or hallucinated
+2. **Faithfulness (0-1)**: Is the answer grounded in the retrieved context AND provides useful information?
+   - 1.0: Fully supported by retrieved evidence and answers the question
+   - 0.5: Partially supported or only answers part of the question
+   - 0.0: Not supported, hallucinated, OR simply says "I don't know/not enough information"
+
+   IMPORTANT: Responses like "I don't have enough information" or "I cannot answer" should receive 0.0 faithfulness because they fail to provide useful information from the memory system, even if they avoid hallucination.
 
 3. **Type-Specific Score (0-1)**: Based on the question type instructions above (if applicable).
 
