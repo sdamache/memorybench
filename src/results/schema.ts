@@ -8,6 +8,7 @@
  */
 
 import type { RunCaseResult, RunSelection } from "../runner/types";
+import type { RunPerformanceMetrics, TimingStats, TokenStats } from "../metrics/performance";
 
 // =============================================================================
 // Run Manifest Types
@@ -116,6 +117,10 @@ export interface CombinationSummary {
 	readonly duration_ms: number;
 	/** Average of each score across all cases */
 	readonly score_averages: Record<string, number>;
+	/** Latency statistics for this combination (optional, added in v1.1) */
+	readonly latency_stats?: TimingStats;
+	/** Token usage for this combination (optional, added in v1.1) */
+	readonly token_stats?: TokenStats;
 }
 
 /**
@@ -136,6 +141,9 @@ export interface MetricsSummary {
 
 	/** Per provider×benchmark breakdown */
 	readonly by_combination: readonly CombinationSummary[];
+
+	/** Run-level performance metrics (optional, added in v1.1) */
+	readonly performance?: RunPerformanceMetrics;
 }
 
 // =============================================================================

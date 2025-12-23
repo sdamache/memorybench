@@ -13,10 +13,47 @@ import type {
 	StatusCounts,
 	CombinationSummary,
 } from "./schema";
+import type { CasePerformanceMetrics } from "../metrics/performance";
+import {
+	calculateTimingStats,
+	aggregateTokenStats,
+	aggregateRunPerformance,
+} from "../metrics/performance";
 
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Extract CasePerformanceMetrics from result artifacts if present.
+ *
+ * @param result - Result record that may contain performance metrics
+ * @returns Performance metrics or undefined if not present
+ */
+function extractPerformanceMetrics(
+	result: ResultRecord,
+): CasePerformanceMetrics | undefined {
+	if (!result.artifacts || typeof result.artifacts !== "object") {
+		return undefined;
+	}
+
+	const perf = result.artifacts.performance;
+	if (!perf || typeof perf !== "object") {
+		return undefined;
+	}
+
+	// Type guard: check if it looks like CasePerformanceMetrics
+	const metrics = perf as Record<string, unknown>;
+	if (
+		Array.isArray(metrics.phases) &&
+		Array.isArray(metrics.api_calls) &&
+		typeof metrics.total_duration_ms === "number"
+	) {
+		return perf as CasePerformanceMetrics;
+	}
+
+	return undefined;
+}
 
 /**
  * Group results by provider×benchmark combination.
@@ -132,6 +169,9 @@ export function buildMetricsSummary(
 	// Build per-combination summaries
 	const byCombination: CombinationSummary[] = [];
 
+	// Collect all performance metrics for overall aggregation
+	const allPerformanceMetrics: CasePerformanceMetrics[] = [];
+
 	for (const [key, comboResults] of grouped.entries()) {
 		const parts = key.split(":");
 		const providerName = parts[0] ?? "";
@@ -149,12 +189,41 @@ export function buildMetricsSummary(
 			0,
 		);
 
+		// Extract performance metrics for this combination
+		const comboPerformanceMetrics: CasePerformanceMetrics[] = [];
+		for (const result of comboResults) {
+			const perf = extractPerformanceMetrics(result);
+			if (perf) {
+				comboPerformanceMetrics.push(perf);
+				allPerformanceMetrics.push(perf);
+			}
+		}
+
+		// Calculate latency stats if we have performance data
+		const latencyStats =
+			comboPerformanceMetrics.length > 0
+				? calculateTimingStats(
+						comboPerformanceMetrics.map((m) => m.total_duration_ms),
+					)
+				: undefined;
+
+		// Calculate token stats if we have token usage data
+		const tokenStats =
+			comboPerformanceMetrics.length > 0
+				? aggregateTokenStats(comboPerformanceMetrics.map((m) => m.token_usage))
+				: undefined;
+
+		// Only include token stats if there was actual token usage
+		const hasTokens = tokenStats && tokenStats.call_count > 0;
+
 		byCombination.push({
 			provider_name: providerName,
 			benchmark_name: benchmarkName,
 			counts,
 			duration_ms: durationMs,
 			score_averages: scoreAverages,
+			latency_stats: latencyStats,
+			token_stats: hasTokens ? tokenStats : undefined,
 		});
 	}
 
@@ -169,6 +238,12 @@ export function buildMetricsSummary(
 	const totalCounts = computeStatusCounts(results);
 	const totalDuration = results.reduce((sum, r) => sum + r.duration_ms, 0);
 
+	// Aggregate overall performance metrics if available
+	const overallPerformance =
+		allPerformanceMetrics.length > 0
+			? aggregateRunPerformance(allPerformanceMetrics)
+			: undefined;
+
 	return {
 		version: 1,
 		run_id: runId,
@@ -178,5 +253,6 @@ export function buildMetricsSummary(
 			duration_ms: totalDuration,
 		},
 		by_combination: byCombination,
+		performance: overallPerformance,
 	};
 }

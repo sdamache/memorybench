@@ -23,6 +23,7 @@ export {
 	aggregateRetrievalMetrics,
 	averagePrecision,
 	calculateRetrievalMetrics,
+	coverageAtK,
 	defaultIdExtractor,
 	extractIds,
 	ndcgAtK,
@@ -30,3 +31,24 @@ export {
 	recallAtK,
 	recordIdExtractor,
 } from "./retrieval";
+
+// Performance metrics (types)
+export type {
+	APICallRecord,
+	CasePerformanceMetrics,
+	PhaseTimingRaw,
+	RunPerformanceMetrics,
+	TimingStats,
+	TokenStats,
+	TokenUsage,
+} from "./performance";
+
+// Performance metrics (utilities)
+export {
+	aggregateRunPerformance,
+	aggregateTokenStats,
+	APICallCollector,
+	calculateTimingStats,
+	createPerformanceContext,
+	PhaseTimer,
+} from "./performance";
