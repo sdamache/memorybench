@@ -1,0 +1,49 @@
+{
+	"manifest_version": "1",
+	"name": "LoCoMo",
+	"version": "1.0.0",
+	"description": "Long Context Memory benchmark testing retrieval across very long, multi-session dialogues with temporal reasoning",
+	"source": "https://arxiv.org/abs/2402.17753",
+	"data_file": "locomo10.json",
+	"flatten": {
+		"field": "qa",
+		"max_items": 5,
+		"promote_fields": ["question", "answer", "evidence", "category"]
+	},
+	"ingestion": {
+		"strategy": "session-based",
+		"sessions_field": "conversation",
+		"sessions_format": "dynamic_keys",
+		"session_key_prefix": "session_",
+		"date_key_suffix": "_date_time",
+		"evidence_field": "evidence",
+		"evidence_parser": "dialog_refs",
+		"mode": "lazy",
+		"content_formatter": "conversation",
+		"dialogue_content_formatter": "speaker_text"
+	},
+	"query": {
+		"question_field": "question",
+		"expected_answer_field": "answer",
+		"retrieval_limit": 10
+	},
+	"evaluation": {
+		"protocol": "llm-as-judge",
+		"type_field": "category",
+		"type_instructions_file": "type_instructions.json"
+	},
+	"metrics": [
+		"correctness",
+		"faithfulness",
+		"retrieval_precision",
+		"retrieval_recall",
+		"retrieval_f1",
+		"retrieval_coverage",
+		"retrieval_ndcg",
+		"retrieval_map"
+	],
+	"required_capabilities": [
+		"add_memory",
+		"retrieve_memory"
+	]
+}

@@ -29,10 +29,14 @@ export const SimpleIngestionSchema = z.object({
 
 /**
  * Session-based ingestion configuration schema
+ *
+ * Supports two session formats:
+ * - "array": Sessions are in an array field (LongMemEval style)
+ * - "dynamic_keys": Sessions are in dynamic keys like session_1, session_2 (LoCoMo style)
  */
 export const SessionBasedIngestionSchema = z.object({
 	strategy: z.literal("session-based"),
-	/** Field containing array of sessions */
+	/** Field containing array of sessions (for array format) or object with session keys (for dynamic_keys) */
 	sessions_field: z.string(),
 	/** Field containing session IDs */
 	session_ids_field: z.string().optional(),
@@ -46,6 +50,20 @@ export const SessionBasedIngestionSchema = z.object({
 	shared_sample_size: z.number().optional().default(10),
 	/** Content formatter */
 	content_formatter: z.enum(["conversation", "raw"]).optional().default("conversation"),
+
+	// === Dynamic keys format options (for LoCoMo-style data) ===
+	/** Session format: "array" for arrays, "dynamic_keys" for session_1, session_2, etc. */
+	sessions_format: z.enum(["array", "dynamic_keys"]).optional().default("array"),
+	/** Prefix for dynamic session keys (e.g., "session_" matches session_1, session_2) */
+	session_key_prefix: z.string().optional().default("session_"),
+	/** Suffix to append to session key to find date (e.g., "_date_time" finds session_1_date_time) */
+	date_key_suffix: z.string().optional().default("_date_time"),
+	/** Field containing evidence references (alternative to answer_session_ids_field) */
+	evidence_field: z.string().optional(),
+	/** How to parse evidence to session IDs: "direct" or "dialog_refs" (parses "D1:3" -> "D1") */
+	evidence_parser: z.enum(["direct", "dialog_refs"]).optional().default("direct"),
+	/** Content formatter for dynamic keys format */
+	dialogue_content_formatter: z.enum(["speaker_text", "role_content"]).optional().default("speaker_text"),
 });
 
 /**
@@ -149,6 +167,25 @@ export const QueryConfigSchema = z.object({
 });
 
 // =============================================================================
+// Data Transformation Schema
+// =============================================================================
+
+/**
+ * Flatten configuration for expanding nested arrays into separate records
+ *
+ * This allows benchmarks like LoCoMo (which has multiple QA pairs per sample)
+ * to be processed as individual cases without transformation scripts.
+ */
+export const FlattenConfigSchema = z.object({
+	/** Field containing array to flatten (e.g., "qa" for LoCoMo) */
+	field: z.string(),
+	/** Maximum items to take from the array (for limiting benchmark size) */
+	max_items: z.number().optional(),
+	/** Fields from flattened items to promote to root level */
+	promote_fields: z.array(z.string()).optional(),
+});
+
+// =============================================================================
 // Main Benchmark Manifest Schema
 // =============================================================================
 
@@ -173,6 +210,9 @@ export const BenchmarkManifestSchema = z.object({
 
 	/** Path to data file (relative to manifest) */
 	data_file: z.string(),
+
+	/** Flatten nested arrays into separate records (optional) */
+	flatten: FlattenConfigSchema.optional(),
 
 	/** Ingestion configuration */
 	ingestion: IngestionConfigSchema,

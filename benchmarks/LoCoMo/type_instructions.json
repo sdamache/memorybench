@@ -1,0 +1,5 @@
+{
+	"1": "This is a FACT-BASED question. The answer should contain specific factual information mentioned in the conversation (names, places, events, descriptions). Evaluate whether the generated answer correctly states the factual information. Partial matches are acceptable if the key facts are present.",
+	"2": "This is a TEMPORAL question about dates, times, or sequences of events. The answer should correctly identify when something happened, the order of events, or time-related information. Be lenient with different date formats (e.g., '7 May 2023' vs 'May 7, 2023') but the core temporal information must be accurate.",
+	"3": "This is a REASONING question that requires inference or logical deduction from the conversation. The answer may involve synthesizing information across multiple parts of the dialogue or making reasonable inferences. Evaluate whether the reasoning is sound and the conclusion is supported by the conversation context."
+}
