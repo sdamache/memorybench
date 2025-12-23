@@ -76,6 +76,12 @@ function resolveModel(config: LLMJudgeConfig, backend: NonNullable<LLMJudgeConfi
 			return DEFAULT_ANTHROPIC_VERTEX_MODEL;
 		case "openai":
 			return "gpt-4o";
+		case "azure-openai":
+			// Azure OpenAI uses deployment names, not model names
+			// User must specify via config.model or MEMORYBENCH_JUDGE_MODEL
+			throw new Error(
+				"azure-openai backend requires explicit deployment name via config.model or MEMORYBENCH_JUDGE_MODEL env var"
+			);
 		case "anthropic":
 			return "claude-sonnet-4-20250514";
 		case "google":
@@ -336,6 +342,41 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 						return parseJudgeResponse(text);
 					}
 
+					case "azure-openai": {
+						const apiKey = process.env.AZURE_OPENAI_API_KEY;
+						const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+						if (!apiKey || !endpoint) {
+							throw new Error(
+								"AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for judge backend 'azure-openai'"
+							);
+						}
+
+							// Azure OpenAI uses deployment names, not model IDs
+						const deploymentName = model;
+						const azureOpenAI = createOpenAI({
+							apiKey,
+							baseURL: `${endpoint}/openai/deployments/${deploymentName}?api-version=2024-10-21`,
+							headers: { "api-key": apiKey },
+						});
+
+						const { text } = await generateText({
+							model: azureOpenAI(deploymentName),
+							prompt,
+							maxOutputTokens: 8192,
+						});
+
+						if (!text) {
+							return {
+								correctness: 0,
+								faithfulness: 0,
+								reasoning: "No text response from judge",
+								additionalMetrics: { judge_error: 1 },
+							};
+						}
+
+						return parseJudgeResponse(text);
+					}
+
 					case "anthropic": {
 						const apiKey = process.env.ANTHROPIC_API_KEY;
 						if (!apiKey) {
@@ -494,6 +535,26 @@ ANSWER:`;
 				const openai = createOpenAI({ apiKey });
 				const { text } = await generateText({
 					model: openai(model),
+					prompt,
+					maxOutputTokens: 1024,
+				});
+				return text || "I don't have enough information to answer this question.";
+			}
+
+			case "azure-openai": {
+				const apiKey = process.env.AZURE_OPENAI_API_KEY;
+				const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+				if (!apiKey || !endpoint) {
+					throw new Error("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for answer generation");
+				}
+					const deploymentName = model;
+				const azureOpenAI = createOpenAI({
+					apiKey,
+					baseURL: `${endpoint}/openai/deployments/${deploymentName}?api-version=2024-10-21`,
+					headers: { "api-key": apiKey },
+				});
+				const { text } = await generateText({
+					model: azureOpenAI(deploymentName),
 					prompt,
 					maxOutputTokens: 1024,
 				});

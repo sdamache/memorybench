@@ -94,7 +94,7 @@ export const LLMJudgeEvaluationSchema = z.object({
 	protocol: z.literal("llm-as-judge"),
 	/** Which backend to use for the judge */
 	judge_backend: z
-		.enum(["anthropic-vertex", "google-vertex", "openai", "anthropic", "google"])
+		.enum(["anthropic-vertex", "google-vertex", "openai", "azure-openai", "anthropic", "google"])
 		.optional(),
 	/** Google Cloud project ID (for Vertex-backed judges) */
 	project_id: z.string().optional(),
@@ -105,7 +105,7 @@ export const LLMJudgeEvaluationSchema = z.object({
 	/** Field containing question type */
 	type_field: z.string().optional(),
 	/** Inline type instructions */
-	type_instructions: z.record(z.string()).optional(),
+	type_instructions: z.record(z.string(), z.string()).optional(),
 	/** Path to type instructions JSON file */
 	type_instructions_file: z.string().optional(),
 });
