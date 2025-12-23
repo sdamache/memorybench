@@ -98,20 +98,25 @@ export function calculateRetrievalMetrics(
 	// Extract IDs from retrieved results
 	const retrievedIds = extractIds(retrievalResults, idExtractor);
 
-	// Calculate relevant items in retrieved set
-	const relevantRetrieved = retrievedIds.filter((id) =>
+	// Deduplicate retrieved IDs for recall calculation
+	// (same session may appear multiple times if provider chunks content)
+	const uniqueRetrievedIds = Array.from(new Set(retrievedIds));
+
+	// Calculate unique relevant items in retrieved set
+	const uniqueRelevantRetrieved = uniqueRetrievedIds.filter((id) =>
 		relevantIds.includes(id),
 	);
 
-	// Calculate precision and recall
+	// Calculate precision using all results (including duplicates)
+	// but recall uses unique IDs (each relevant doc counted once)
 	const precision =
 		retrievalResults.length > 0
-			? relevantRetrieved.length / retrievalResults.length
+			? uniqueRelevantRetrieved.length / retrievalResults.length
 			: 0;
 
 	const totalRelevant = context.totalRelevantCount ?? relevantIds.length;
 	const recall =
-		totalRelevant > 0 ? relevantRetrieved.length / totalRelevant : 0;
+		totalRelevant > 0 ? uniqueRelevantRetrieved.length / totalRelevant : 0;
 
 	// Calculate F1 score
 	const f1 =
@@ -151,7 +156,9 @@ export function recallAtK(
 	const topK = retrievalResults.slice(0, k);
 	const retrievedIds = extractIds(topK, idExtractor);
 
-	const relevantRetrieved = retrievedIds.filter((id) =>
+	// Deduplicate to count each relevant doc once
+	const uniqueRetrievedIds = Array.from(new Set(retrievedIds));
+	const relevantRetrieved = uniqueRetrievedIds.filter((id) =>
 		relevantIds.includes(id),
 	);
 
@@ -178,11 +185,36 @@ export function precisionAtK(
 	const topK = retrievalResults.slice(0, k);
 	const retrievedIds = extractIds(topK, idExtractor);
 
-	const relevantRetrieved = retrievedIds.filter((id) =>
+	// Deduplicate to count each relevant doc once
+	const uniqueRetrievedIds = Array.from(new Set(retrievedIds));
+	const relevantRetrieved = uniqueRetrievedIds.filter((id) =>
 		relevantIds.includes(id),
 	);
 
+	// Precision uses unique docs / total results
 	return topK.length > 0 ? relevantRetrieved.length / topK.length : 0;
+}
+
+/**
+ * Calculate coverage at K (whether any relevant item appears in top K)
+ *
+ * @param retrievalResults - All retrieval results
+ * @param relevantIds - IDs of relevant items
+ * @param k - Number of top results to consider
+ * @param idExtractor - Function to extract IDs from content
+ * @returns Coverage@K value (0 or 1)
+ */
+export function coverageAtK(
+	retrievalResults: RetrievalItem[],
+	relevantIds: string[],
+	k: number,
+	idExtractor: IdExtractor = defaultIdExtractor,
+): number {
+	const topK = retrievalResults.slice(0, k);
+	const retrievedIds = extractIds(topK, idExtractor);
+	// Deduplicate (not strictly needed for "any" check but consistent)
+	const uniqueRetrievedIds = Array.from(new Set(retrievedIds));
+	return uniqueRetrievedIds.some((id) => relevantIds.includes(id)) ? 1 : 0;
 }
 
 /**
@@ -203,10 +235,16 @@ export function ndcgAtK(
 	const topK = retrievalResults.slice(0, k);
 	const retrievedIds = extractIds(topK, idExtractor);
 
-	// Calculate DCG
+	// Calculate DCG - each relevant doc only counts once (first occurrence)
 	let dcg = 0;
+	const seenRelevant = new Set<string>();
 	for (let i = 0; i < retrievedIds.length; i++) {
-		const isRelevant = relevantIds.includes(retrievedIds[i]!) ? 1 : 0;
+		const id = retrievedIds[i]!;
+		// Only count as relevant if it's in relevantIds AND we haven't seen it yet
+		const isRelevant = relevantIds.includes(id) && !seenRelevant.has(id) ? 1 : 0;
+		if (isRelevant) {
+			seenRelevant.add(id);
+		}
 		dcg += isRelevant / Math.log2(i + 2); // +2 because log2(1) = 0
 	}
 
@@ -238,9 +276,13 @@ export function averagePrecision(
 
 	let relevantSoFar = 0;
 	let sumPrecision = 0;
+	const seenRelevant = new Set<string>();
 
 	for (let i = 0; i < retrievedIds.length; i++) {
-		if (relevantIds.includes(retrievedIds[i]!)) {
+		const id = retrievedIds[i]!;
+		// Only count as relevant if it's in relevantIds AND we haven't seen it yet
+		if (relevantIds.includes(id) && !seenRelevant.has(id)) {
+			seenRelevant.add(id);
 			relevantSoFar++;
 			sumPrecision += relevantSoFar / (i + 1);
 		}

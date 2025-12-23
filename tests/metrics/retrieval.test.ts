@@ -9,6 +9,7 @@ import type { RetrievalItem } from "../../types/core";
 import {
 	averagePrecision,
 	calculateRetrievalMetrics,
+	coverageAtK,
 	extractIds,
 	ndcgAtK,
 	precisionAtK,
@@ -193,6 +194,34 @@ describe("precisionAtK", () => {
 
 		// At K=3, 2/3 are relevant
 		expect(precisionAtK(results, relevantIds, 3)).toBeCloseTo(2 / 3, 5);
+	});
+});
+
+describe("coverageAtK", () => {
+	test("returns 1 when at least one relevant item is in top K", () => {
+		const results: RetrievalItem[] = [
+			mockRetrievalItem("r1", "=== Session: s99 ===", 0.9), // not relevant
+			mockRetrievalItem("r2", "=== Session: s1 ===", 0.8), // relevant
+		];
+
+		expect(coverageAtK(results, ["s1"], 2)).toBe(1);
+	});
+
+	test("returns 0 when no relevant items are in top K", () => {
+		const results: RetrievalItem[] = [
+			mockRetrievalItem("r1", "=== Session: s99 ===", 0.9),
+			mockRetrievalItem("r2", "=== Session: s98 ===", 0.8),
+		];
+
+		expect(coverageAtK(results, ["s1"], 2)).toBe(0);
+	});
+
+	test("returns 0 when k is 0", () => {
+		const results: RetrievalItem[] = [
+			mockRetrievalItem("r1", "=== Session: s1 ===", 0.9),
+		];
+
+		expect(coverageAtK(results, ["s1"], 0)).toBe(0);
 	});
 });
 
