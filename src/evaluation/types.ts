@@ -51,6 +51,16 @@ export interface EvaluationContext {
  * Configuration for LLM-as-Judge evaluation
  */
 export interface LLMJudgeConfig {
+	/**
+	 * Which backend to use for the judge.
+	 *
+	 * - `anthropic-vertex`: Claude via Vertex AI (default)
+	 * - `google-vertex`: Gemini via Vertex AI
+	 * - `openai`: OpenAI API
+	 * - `anthropic`: Anthropic API
+	 * - `google`: Google Gemini API (Generative Language API)
+	 */
+	backend?: "anthropic-vertex" | "google-vertex" | "openai" | "anthropic" | "google";
 	/** Model to use for evaluation */
 	model?: string;
 	/** Google Cloud region for Vertex AI */

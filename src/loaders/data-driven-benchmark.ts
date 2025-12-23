@@ -169,7 +169,10 @@ async function createEvaluationProtocol(
 			}
 
 			return createLLMJudge({
+				backend: config.judge_backend,
 				model: config.model,
+				region: config.region,
+				projectId: config.project_id,
 				typeField: config.type_field,
 				typeInstructions,
 			});
@@ -266,12 +269,13 @@ export async function createDataDrivenBenchmark(
 					manifest.query.retrieval_limit,
 				);
 
-				// Phase 3: Synthesize answer from context
+				// Phase 3: Synthesize answer from context using LLM
 				const retrievedContext = retrievalResults.map((r) => r.record.context);
-				const generatedAnswer =
-					retrievedContext.length > 0
-						? `Based on retrieved memories:\n\n${retrievedContext.slice(0, 3).join("\n\n---\n\n")}`
-						: "I don't have enough information to answer this question.";
+				const { generateAnswerFromContext } = await import("../evaluation/llm-judge");
+				const generatedAnswer = await generateAnswerFromContext(
+					question,
+					retrievedContext.slice(0, 5), // Use top 5 results
+				);
 
 				// Phase 4: Evaluate
 				const expectedAnswer = String(benchmarkCase.expected ?? "");
@@ -331,8 +335,10 @@ export async function createDataDrivenBenchmark(
 				}
 
 				// Determine status
-				const status =
-					evalResult.correctness >= 0.7 && evalResult.faithfulness >= 0.5
+				const judgeErrored = evalResult.additionalMetrics?.judge_error === 1;
+				const status = judgeErrored
+					? "error"
+					: evalResult.correctness >= 0.7 && evalResult.faithfulness >= 0.5
 						? "pass"
 						: "fail";
 
