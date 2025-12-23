@@ -519,8 +519,19 @@ export async function generateAnswerFromContext(
 		return "I don't have enough information to answer this question.";
 	}
 
-	const backend = resolveBackend(config);
-	const model = resolveModel(config, backend);
+	// Answer generation can use separate backend from judge
+	const answerBackendEnv = process.env.MEMORYBENCH_ANSWER_BACKEND;
+	const answerModelEnv = process.env.MEMORYBENCH_ANSWER_MODEL;
+
+	// Create config with answer-specific overrides
+	const answerConfig: LLMJudgeConfig = {
+		...config,
+		backend: answerBackendEnv ? (answerBackendEnv as LLMJudgeConfig["backend"]) : config.backend,
+		model: answerModelEnv || config.model,
+	};
+
+	const backend = resolveBackend(answerConfig);
+	const model = resolveModel(answerConfig, backend);
 
 	const prompt = `You are a helpful assistant with access to a memory system. Based on the retrieved memories below, answer the user's question concisely and accurately.
 
