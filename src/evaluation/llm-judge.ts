@@ -61,8 +61,17 @@ function normalizeAnthropicVertexModelId(modelId: string): string {
 
 function resolveBackend(config: LLMJudgeConfig): NonNullable<LLMJudgeConfig["backend"]> {
 	const env = process.env.MEMORYBENCH_JUDGE_BACKEND ?? process.env.LLM_JUDGE_BACKEND;
-	if (env) return env as NonNullable<LLMJudgeConfig["backend"]>;
-	return config.backend ?? "anthropic-vertex";
+	const backend = env ?? config.backend ?? "anthropic-vertex";
+
+	// Runtime validation: ensure backend is valid
+	const validBackends = ["anthropic-vertex", "google-vertex", "openai", "azure-openai", "anthropic", "google"] as const;
+	if (!validBackends.includes(backend as any)) {
+		throw new Error(
+			`Invalid judge backend: "${backend}". Valid options: ${validBackends.join(", ")}`
+		);
+	}
+
+	return backend as NonNullable<LLMJudgeConfig["backend"]>;
 }
 
 function resolveModel(config: LLMJudgeConfig, backend: NonNullable<LLMJudgeConfig["backend"]>): string {
@@ -86,6 +95,9 @@ function resolveModel(config: LLMJudgeConfig, backend: NonNullable<LLMJudgeConfi
 			return "claude-sonnet-4-20250514";
 		case "google":
 			return "gemini-1.5-flash";
+		default:
+			// Exhaustive check - should never reach here due to resolveBackend validation
+			throw new Error(`Unhandled backend in resolveModel: ${backend satisfies never}`);
 	}
 }
 
@@ -428,6 +440,10 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 
 						return parseJudgeResponse(text);
 					}
+
+					default:
+						// Exhaustive check - should never reach here due to resolveBackend validation
+						throw new Error(`Unhandled backend in evaluate: ${backend satisfies never}`);
 				}
 			} catch (error) {
 				return {
@@ -603,6 +619,10 @@ ANSWER:`;
 				}
 				return textContent.text;
 			}
+
+			default:
+				// Exhaustive check - should never reach here due to resolveBackend validation
+				throw new Error(`Unhandled backend in generateAnswerFromContext: ${backend satisfies never}`);
 		}
 	} catch (error) {
 		console.error("Answer generation error:", error);

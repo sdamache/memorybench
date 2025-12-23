@@ -269,12 +269,24 @@ export async function createDataDrivenBenchmark(
 					manifest.query.retrieval_limit,
 				);
 
-				// Phase 3: Synthesize answer from context using LLM
+					// Phase 3: Synthesize answer from context using LLM
 				const retrievedContext = retrievalResults.map((r) => r.record.context);
 				const { generateAnswerFromContext } = await import("../evaluation/llm-judge");
+
+				// Build judge config from manifest to ensure answer generation uses same backend
+				const judgeConfig = manifest.evaluation.protocol === "llm-as-judge"
+					? {
+						backend: manifest.evaluation.judge_backend,
+						model: manifest.evaluation.model,
+						region: manifest.evaluation.region,
+						projectId: manifest.evaluation.project_id,
+					}
+					: {};
+
 				const generatedAnswer = await generateAnswerFromContext(
 					question,
 					retrievedContext.slice(0, 5), // Use top 5 results
+					judgeConfig,
 				);
 
 				// Phase 4: Evaluate
