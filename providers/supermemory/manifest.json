@@ -12,7 +12,7 @@
 			"delete_memory": true
 		},
 		"optional_operations": {
-			"update_memory": false,
+			"update_memory": true,
 			"list_memories": true,
 			"reset_scope": false,
 			"get_capabilities": true

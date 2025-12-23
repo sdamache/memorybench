@@ -202,6 +202,36 @@ const supermemoryProvider: BaseProvider = {
 		}
 	},
 
+	async update_memory(
+		scope: ScopeContext,
+		memory_id: string,
+		content: string,
+		metadata?: Record<string, unknown>,
+	): Promise<MemoryRecord> {
+		const response = await apiRequest<{
+			id: string;
+			status: string;
+		}>(`/documents/${encodeURIComponent(memory_id)}`, {
+			method: "PATCH",
+			body: JSON.stringify({
+				content,
+				metadata: {
+					...metadata,
+					scope_user_id: scope.user_id,
+					scope_run_id: scope.run_id,
+				},
+			}),
+		});
+
+		// PATCH response only includes {id, status}, return updated content from input
+		return {
+			id: response.id,
+			context: content,
+			metadata: metadata ?? {},
+			timestamp: Date.now(),
+		};
+	},
+
 	async list_memories(
 		scope: ScopeContext,
 		limit = 100,
@@ -237,7 +267,7 @@ const supermemoryProvider: BaseProvider = {
 				delete_memory: true,
 			},
 			optional_operations: {
-				update_memory: false,
+				update_memory: true,
 				list_memories: true,
 				reset_scope: false,
 				get_capabilities: true,
