@@ -269,25 +269,31 @@ export async function createDataDrivenBenchmark(
 					manifest.query.retrieval_limit,
 				);
 
-					// Phase 3: Synthesize answer from context using LLM
+						// Phase 3: Synthesize answer from context (only for LLM-based evaluation)
 				const retrievedContext = retrievalResults.map((r) => r.record.context);
-				const { generateAnswerFromContext } = await import("../evaluation/llm-judge");
+				let generatedAnswer: string;
 
-				// Build judge config from manifest to ensure answer generation uses same backend
-				const judgeConfig = manifest.evaluation.protocol === "llm-as-judge"
-					? {
+				if (manifest.evaluation.protocol === "llm-as-judge") {
+					// Use LLM to generate answer from retrieved context
+					const { generateAnswerFromContext } = await import("../evaluation/llm-judge");
+					const judgeConfig = {
 						backend: manifest.evaluation.judge_backend,
 						model: manifest.evaluation.model,
 						region: manifest.evaluation.region,
 						projectId: manifest.evaluation.project_id,
-					}
-					: {};
+					};
 
-				const generatedAnswer = await generateAnswerFromContext(
-					question,
-					retrievedContext.slice(0, 5), // Use top 5 results
-					judgeConfig,
-				);
+					generatedAnswer = await generateAnswerFromContext(
+						question,
+						retrievedContext.slice(0, 5), // Use top 5 results
+						judgeConfig,
+					);
+				} else {
+					// For exact-match or other protocols, just concatenate retrieved context
+					generatedAnswer = retrievedContext.length > 0
+						? `Based on retrieved memories:\n\n${retrievedContext.slice(0, 3).join("\n\n---\n\n")}`
+						: "I don't have enough information to answer this question.";
+				}
 
 				// Phase 4: Evaluate
 				const expectedAnswer = String(benchmarkCase.expected ?? "");

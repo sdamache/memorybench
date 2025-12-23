@@ -274,17 +274,16 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 		name: "llm-as-judge",
 
 		async evaluate(context: EvaluationContext): Promise<EvaluationResult> {
-			// Get type-specific instructions if available
-			let typeInstructions: string | undefined;
-			if (context.questionType && config.typeInstructions) {
-				typeInstructions = config.typeInstructions[context.questionType];
-			}
-
-			const prompt = buildPrompt(context, typeInstructions);
-			const backend = resolveBackend(config);
-			const model = resolveModel(config, backend);
-
 			try {
+				// Get type-specific instructions if available
+				let typeInstructions: string | undefined;
+				if (context.questionType && config.typeInstructions) {
+					typeInstructions = config.typeInstructions[context.questionType];
+				}
+
+				const prompt = buildPrompt(context, typeInstructions);
+				const backend = resolveBackend(config);
+				const model = resolveModel(config, backend);
 				switch (backend) {
 					case "anthropic-vertex": {
 						const anthropic = getAnthropicVertexClient(config);
@@ -357,18 +356,25 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 					case "azure-openai": {
 						const apiKey = process.env.AZURE_OPENAI_API_KEY;
 						const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+						const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
 						if (!apiKey || !endpoint) {
 							throw new Error(
 								"AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for judge backend 'azure-openai'"
 							);
 						}
 
-							// Azure OpenAI uses deployment names, not model IDs
+						// Azure OpenAI uses deployment names, not model IDs
 						const deploymentName = model;
 						const azureOpenAI = createOpenAI({
 							apiKey,
-							baseURL: `${endpoint}/openai/deployments/${deploymentName}?api-version=2024-10-21`,
+							baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
 							headers: { "api-key": apiKey },
+							fetch: (url, init) => {
+								// Append api-version query param to all requests
+								const urlObj = new URL(url);
+								urlObj.searchParams.set("api-version", apiVersion);
+								return fetch(urlObj.toString(), init);
+							},
 						});
 
 						const { text } = await generateText({
@@ -560,14 +566,21 @@ ANSWER:`;
 			case "azure-openai": {
 				const apiKey = process.env.AZURE_OPENAI_API_KEY;
 				const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+				const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
 				if (!apiKey || !endpoint) {
 					throw new Error("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for answer generation");
 				}
-					const deploymentName = model;
+				const deploymentName = model;
 				const azureOpenAI = createOpenAI({
 					apiKey,
-					baseURL: `${endpoint}/openai/deployments/${deploymentName}?api-version=2024-10-21`,
+					baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
 					headers: { "api-key": apiKey },
+					fetch: (url, init) => {
+						// Append api-version query param to all requests
+						const urlObj = new URL(url);
+						urlObj.searchParams.set("api-version", apiVersion);
+						return fetch(urlObj.toString(), init);
+					},
 				});
 				const { text } = await generateText({
 					model: azureOpenAI(deploymentName),
