@@ -169,7 +169,10 @@ async function createEvaluationProtocol(
 			}
 
 			return createLLMJudge({
+				backend: config.judge_backend,
 				model: config.model,
+				region: config.region,
+				projectId: config.project_id,
 				typeField: config.type_field,
 				typeInstructions,
 			});
@@ -266,12 +269,31 @@ export async function createDataDrivenBenchmark(
 					manifest.query.retrieval_limit,
 				);
 
-				// Phase 3: Synthesize answer from context
+						// Phase 3: Synthesize answer from context (only for LLM-based evaluation)
 				const retrievedContext = retrievalResults.map((r) => r.record.context);
-				const generatedAnswer =
-					retrievedContext.length > 0
+				let generatedAnswer: string;
+
+				if (manifest.evaluation.protocol === "llm-as-judge") {
+					// Use LLM to generate answer from retrieved context
+					const { generateAnswerFromContext } = await import("../evaluation/llm-judge");
+					const judgeConfig = {
+						backend: manifest.evaluation.judge_backend,
+						model: manifest.evaluation.model,
+						region: manifest.evaluation.region,
+						projectId: manifest.evaluation.project_id,
+					};
+
+					generatedAnswer = await generateAnswerFromContext(
+						question,
+						retrievedContext.slice(0, 5), // Use top 5 results
+						judgeConfig,
+					);
+				} else {
+					// For exact-match or other protocols, just concatenate retrieved context
+					generatedAnswer = retrievedContext.length > 0
 						? `Based on retrieved memories:\n\n${retrievedContext.slice(0, 3).join("\n\n---\n\n")}`
 						: "I don't have enough information to answer this question.";
+				}
 
 				// Phase 4: Evaluate
 				const expectedAnswer = String(benchmarkCase.expected ?? "");
@@ -331,8 +353,10 @@ export async function createDataDrivenBenchmark(
 				}
 
 				// Determine status
-				const status =
-					evalResult.correctness >= 0.7 && evalResult.faithfulness >= 0.5
+				const judgeErrored = evalResult.additionalMetrics?.judge_error === 1;
+				const status = judgeErrored
+					? "error"
+					: evalResult.correctness >= 0.7 && evalResult.faithfulness >= 0.5
 						? "pass"
 						: "fail";
 
