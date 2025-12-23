@@ -47,13 +47,17 @@ export type IngestionMode = "lazy" | "shared" | "full";
 
 /**
  * Configuration for session-based ingestion
+ *
+ * Supports two session formats:
+ * - "array": Sessions are in an array field (LongMemEval style)
+ * - "dynamic_keys": Sessions are in dynamic keys like session_1, session_2 (LoCoMo style)
  */
 export interface SessionBasedConfig {
-	/** Field containing array of sessions */
+	/** Field containing array of sessions (for array format) or object with session keys (for dynamic_keys) */
 	sessionsField: string;
-	/** Field containing session IDs (optional) */
+	/** Field containing session IDs (optional, for array format) */
 	sessionIdsField?: string;
-	/** Field containing session dates (optional) */
+	/** Field containing session dates (optional, for array format) */
 	datesField?: string;
 	/** Field containing answer session IDs for selective ingestion */
 	answerSessionIdsField?: string;
@@ -63,6 +67,20 @@ export interface SessionBasedConfig {
 	sharedSampleSize?: number;
 	/** Content formatter: "conversation" or "raw" */
 	contentFormatter?: "conversation" | "raw";
+
+	// === Dynamic keys format options (for LoCoMo-style data) ===
+	/** Session format: "array" for arrays, "dynamic_keys" for session_1, session_2, etc. */
+	sessionsFormat?: "array" | "dynamic_keys";
+	/** Prefix for dynamic session keys (e.g., "session_" matches session_1, session_2) */
+	sessionKeyPrefix?: string;
+	/** Suffix to append to session key to find date (e.g., "_date_time" finds session_1_date_time) */
+	dateKeySuffix?: string;
+	/** Field containing evidence references (alternative to answer_session_ids_field) */
+	evidenceField?: string;
+	/** How to parse evidence to session IDs: "direct" or "dialog_refs" (parses "D1:3" -> "D1") */
+	evidenceParser?: "direct" | "dialog_refs";
+	/** Content formatter for dynamic keys format: "speaker_text" or "role_content" */
+	dialogueContentFormatter?: "speaker_text" | "role_content";
 }
 
 /**
