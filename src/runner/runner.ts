@@ -247,7 +247,9 @@ export async function executeCases(
 		const results: RunCaseResult[] = [];
 		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
 
-		for (const benchmarkCase of casesToRun) {
+		const totalCasesToRun = casesToRun.length;
+		for (let i = 0; i < casesToRun.length; i++) {
+			const benchmarkCase = casesToRun[i];
 			const result = await executeCase(
 				providerName,
 				benchmarkName,

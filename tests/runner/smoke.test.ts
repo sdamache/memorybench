@@ -21,8 +21,10 @@ import type { RunSelection } from "../../src/runner/types";
 beforeAll(async () => {
 	// Initialize registries before running tests
 	const benchmarkRegistry = BenchmarkRegistry.getInstance();
+	benchmarkRegistry.reset();
 	await benchmarkRegistry.initialize();
 
+	ProviderRegistry.reset();
 	const providerRegistry = await ProviderRegistry.getInstance();
 	// Provider registry auto-initializes on getInstance()
 });

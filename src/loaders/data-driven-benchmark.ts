@@ -37,7 +37,46 @@ import {
 	cleanupIngested,
 } from "../ingestion";
 import type { IngestionStrategy } from "../ingestion/types";
-import { calculateRetrievalMetrics } from "../metrics";
+import {
+	averagePrecision,
+	calculateRetrievalMetrics,
+	coverageAtK,
+	ndcgAtK,
+} from "../metrics";
+
+function parseEvidenceToSessionIds(
+	evidence: unknown,
+	parser: "direct" | "dialog_refs" = "direct",
+): string[] {
+	const evidenceItems = Array.isArray(evidence)
+		? evidence
+		: evidence !== undefined && evidence !== null
+			? [evidence]
+			: [];
+
+	if (parser === "direct") {
+		return evidenceItems
+			.filter((e): e is string => typeof e === "string")
+			.map((e) => e.trim())
+			.filter((e) => e.length > 0);
+	}
+
+	const sessionIds = new Set<string>();
+	for (const item of evidenceItems) {
+		if (typeof item !== "string") continue;
+
+		// Handle both "D1:3" and "D1:3; D2:5" formats
+		const parts = item.split(";").map((p) => p.trim());
+		for (const part of parts) {
+			const match = part.match(/^(D\d+)(?::|$)/i);
+			if (match?.[1]) {
+				sessionIds.add(match[1].toUpperCase());
+			}
+		}
+	}
+
+	return Array.from(sessionIds);
+}
 
 /**
  * Error thrown when manifest loading fails
@@ -114,6 +153,61 @@ export async function loadBenchmarkData(
 }
 
 /**
+ * Flatten nested arrays into separate records
+ *
+ * This allows benchmarks like LoCoMo (which has multiple QA pairs per sample)
+ * to be processed as individual cases without transformation scripts.
+ *
+ * @param data - Array of records to flatten
+ * @param config - Flatten configuration
+ * @returns Flattened array of records
+ */
+export function flattenData(
+	data: Record<string, unknown>[],
+	config: { field: string; max_items?: number; promote_fields?: string[] },
+): Record<string, unknown>[] {
+	const result: Record<string, unknown>[] = [];
+
+	for (const record of data) {
+		const arr = record[config.field];
+		if (!Array.isArray(arr)) {
+			// If no array to flatten, keep record as-is
+			result.push(record);
+			continue;
+		}
+
+		// Limit items if specified
+		const items = config.max_items ? arr.slice(0, config.max_items) : arr;
+
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i] as Record<string, unknown>;
+			// Create new record without the flattened array field
+			const { [config.field]: _, ...parent } = record;
+
+			// Promote specified fields from the item to root level
+			const promoted: Record<string, unknown> = {};
+			for (const field of config.promote_fields ?? []) {
+				if (item[field] !== undefined) {
+					promoted[field] = item[field];
+				}
+			}
+
+			// Generate unique ID
+			const parentId = (parent.sample_id as string) ?? (parent.id as string) ?? `rec_${result.length}`;
+
+			result.push({
+				id: `${parentId}_q${i}`,
+				...parent,
+				...promoted,
+				_flatten_index: i,
+			});
+		}
+	}
+
+	return result;
+}
+
+/**
  * Create an ingestion strategy from config
  */
 function createIngestionStrategy(config: IngestionConfig): IngestionStrategy {
@@ -134,6 +228,13 @@ function createIngestionStrategy(config: IngestionConfig): IngestionStrategy {
 				mode: config.mode,
 				sharedSampleSize: config.shared_sample_size,
 				contentFormatter: config.content_formatter,
+				// Dynamic keys format options (for LoCoMo-style data)
+				sessionsFormat: config.sessions_format,
+				sessionKeyPrefix: config.session_key_prefix,
+				dateKeySuffix: config.date_key_suffix,
+				evidenceField: config.evidence_field,
+				evidenceParser: config.evidence_parser,
+				dialogueContentFormatter: config.dialogue_content_formatter,
 			});
 
 		case "add-delete-verify":
@@ -202,7 +303,16 @@ export async function createDataDrivenBenchmark(
 	const dataPath = path.join(benchmarkDir, manifest.data_file);
 
 	// Load data
-	const data = await loadBenchmarkData(dataPath);
+	let data = await loadBenchmarkData(dataPath);
+
+	// Apply flatten transformation if configured
+	if (manifest.flatten) {
+		data = flattenData(data, {
+			field: manifest.flatten.field,
+			max_items: manifest.flatten.max_items,
+			promote_fields: manifest.flatten.promote_fields,
+		});
+	}
 
 	// Create ingestion strategy
 	const ingestionStrategy = createIngestionStrategy(manifest.ingestion);
@@ -315,20 +425,44 @@ export async function createDataDrivenBenchmark(
 				// Phase 5: Calculate retrieval metrics
 				// Use configured field name from manifest instead of hard-coded key
 				let relevantIds: string[] | undefined;
-				if (
-					manifest.ingestion.strategy === "session-based" &&
-					manifest.ingestion.answer_session_ids_field
-				) {
-					relevantIds = benchmarkCase.input[
-						manifest.ingestion.answer_session_ids_field
-					] as string[] | undefined;
+				if (manifest.ingestion.strategy === "session-based") {
+					// LongMemEval-style: explicit answer session IDs field
+					if (manifest.ingestion.answer_session_ids_field) {
+						const ids = benchmarkCase.input[
+							manifest.ingestion.answer_session_ids_field
+						] as unknown;
+						if (Array.isArray(ids)) {
+							relevantIds = ids.map((id) => String(id));
+						}
+					}
+
+					// LoCoMo-style: evidence references that imply relevant sessions
+					if (!relevantIds && manifest.ingestion.evidence_field) {
+						const evidence = benchmarkCase.input[manifest.ingestion.evidence_field];
+						const parser = manifest.ingestion.evidence_parser ?? "direct";
+						const parsed = parseEvidenceToSessionIds(evidence, parser);
+						if (parsed.length > 0) {
+							relevantIds = parsed;
+						}
+					}
 				}
+				if (relevantIds && relevantIds.length > 0) {
+					// Deduplicate while preserving order
+					relevantIds = Array.from(new Set(relevantIds));
+				} else {
+					relevantIds = undefined;
+				}
+
 				const retrievalMetrics = relevantIds
 					? calculateRetrievalMetrics({
 							retrievalResults,
 							relevantIds,
 						})
 					: null;
+				const retrievalK = Math.min(
+					manifest.query.retrieval_limit ?? retrievalResults.length,
+					retrievalResults.length,
+				);
 
 				// Build scores
 				const scores: Record<string, number> = {
@@ -344,6 +478,22 @@ export async function createDataDrivenBenchmark(
 					scores.retrieval_precision = retrievalMetrics.precision;
 					scores.retrieval_recall = retrievalMetrics.recall;
 					scores.retrieval_f1 = retrievalMetrics.f1;
+
+					// Additional rank/coverage metrics at K (where K = retrieval_limit)
+					scores.retrieval_coverage = coverageAtK(
+						retrievalResults,
+						relevantIds!,
+						retrievalK,
+					);
+					scores.retrieval_ndcg = ndcgAtK(
+						retrievalResults,
+						relevantIds!,
+						retrievalK,
+					);
+					scores.retrieval_map = averagePrecision(
+						retrievalResults.slice(0, retrievalK),
+						relevantIds!,
+					);
 				}
 
 				if (evalResult.additionalMetrics) {

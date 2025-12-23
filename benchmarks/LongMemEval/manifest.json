@@ -29,7 +29,10 @@
     "faithfulness",
     "retrieval_precision",
     "retrieval_recall",
-    "retrieval_f1"
+    "retrieval_f1",
+    "retrieval_coverage",
+    "retrieval_ndcg",
+    "retrieval_map"
   ],
   "required_capabilities": [
     "add_memory",

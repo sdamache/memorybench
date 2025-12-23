@@ -31,7 +31,7 @@
 	},
 	"conformance_tests": {
 		"expected_behavior": {
-			"convergence_wait_ms": 10000
+			"convergence_wait_ms": 30000
 		}
 	}
 }
