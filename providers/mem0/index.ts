@@ -103,6 +103,7 @@ const mem0Provider: BaseProvider = {
 		content: string,
 		metadata?: Record<string, unknown>,
 	): Promise<MemoryRecord> {
+
 		const response = await apiRequest<AddMemoryResponse[]>("/v1/memories/", {
 			method: "POST",
 			body: JSON.stringify({
@@ -111,6 +112,7 @@ const mem0Provider: BaseProvider = {
 				metadata: metadata ?? {},
 			}),
 		});
+
 
 		// Mem0 returns an array of memory events
 		const firstResult = response[0];
@@ -127,6 +129,7 @@ const mem0Provider: BaseProvider = {
 		query: string,
 		limit = 10,
 	): Promise<RetrievalItem[]> {
+
 		const response = await apiRequest<SearchResult[]>("/v2/memories/search/", {
 			method: "POST",
 			body: JSON.stringify({
