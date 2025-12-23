@@ -15,7 +15,7 @@ import type {
 } from "../../types/core";
 import type { BaseProvider } from "../../types/provider";
 
-const API_BASE_URL = "https://api.supermemory.ai/v3";
+const API_BASE_URL = process.env.SUPERMEMORY_API_URL ?? "https://api.supermemory.ai/v3";
 
 /**
  * Get API key from environment
@@ -244,6 +244,7 @@ const supermemoryProvider: BaseProvider = {
 			},
 			system_flags: {
 				async_indexing: true, // Documents are queued for processing
+				convergence_wait_ms: 10000, // 10s wait for async indexing to complete
 			},
 			intelligence_flags: {
 				auto_extraction: true, // Extracts from URLs, PDFs, etc.
