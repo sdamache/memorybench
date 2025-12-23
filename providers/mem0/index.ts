@@ -173,6 +173,40 @@ const mem0Provider: BaseProvider = {
 		}
 	},
 
+	async update_memory(
+		scope: ScopeContext,
+		memory_id: string,
+		content: string,
+		metadata?: Record<string, unknown>,
+	): Promise<MemoryRecord> {
+		// Mem0 requires valid UUIDs for updates
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		if (!uuidRegex.test(memory_id)) {
+			throw new Error(`Invalid memory ID for update: ${memory_id} (must be UUID format)`);
+		}
+
+		const response = await apiRequest<{
+			id: string;
+			text: string;
+			user_id?: string;
+			updated_at: string;
+			metadata?: Record<string, unknown>;
+		}>(`/v1/memories/${encodeURIComponent(memory_id)}`, {
+			method: "PUT",
+			body: JSON.stringify({
+				text: content,
+				metadata: metadata ?? {},
+			}),
+		});
+
+		return {
+			id: response.id,
+			context: response.text,
+			metadata: (response.metadata as Record<string, unknown>) ?? {},
+			timestamp: response.updated_at ? new Date(response.updated_at).getTime() : Date.now(),
+		};
+	},
+
 	async list_memories(
 		scope: ScopeContext,
 		limit = 100,
@@ -207,7 +241,7 @@ const mem0Provider: BaseProvider = {
 				retrieve_memory: true,
 				delete_memory: true,
 			},
-			optional_operations: {
+				optional_operations: {
 				update_memory: true,
 				list_memories: true,
 				reset_scope: false,
@@ -215,6 +249,7 @@ const mem0Provider: BaseProvider = {
 			},
 			system_flags: {
 				async_indexing: true,
+				convergence_wait_ms: 15000, // 15s wait for async indexing to complete
 			},
 			intelligence_flags: {
 				auto_extraction: true,
