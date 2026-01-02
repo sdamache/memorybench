@@ -16,6 +16,18 @@ import type { BaseProvider } from "../../types/provider";
 
 const API_BASE_URL = "https://api.mem0.ai";
 
+function getScopedUserId(scope: ScopeContext): string {
+	const sanitize = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_");
+	const runPart = sanitize(scope.run_id).slice(0, 12);
+	const sessionKey = scope.session_id ?? scope.namespace ?? "default";
+
+	const hasher = new Bun.CryptoHasher("sha256");
+	hasher.update(`${scope.user_id}|${scope.run_id}|${sessionKey}`);
+	const scopeHash = hasher.digest("hex").slice(0, 12);
+
+	return `memorybench_${runPart}_${scopeHash}`;
+}
+
 /**
  * Get API key from environment
  */
@@ -92,6 +104,141 @@ interface ListMemoryResult {
 	metadata?: Record<string, unknown>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function parseSearchResults(raw: unknown): SearchResult[] {
+	const items: unknown[] = Array.isArray(raw)
+		? raw
+		: isRecord(raw) && Array.isArray(raw.results)
+			? raw.results
+			: [];
+
+	const results: SearchResult[] = [];
+	for (const item of items) {
+		if (!isRecord(item)) continue;
+		const id = typeof item.id === "string" ? item.id : null;
+		const memory = typeof item.memory === "string" ? item.memory : null;
+		if (!id || !memory) continue;
+
+		const created_at = typeof item.created_at === "string" ? item.created_at : "";
+		const updated_at = typeof item.updated_at === "string" ? item.updated_at : "";
+		const user_id = typeof item.user_id === "string" ? item.user_id : undefined;
+		const metadata = isRecord(item.metadata) ? item.metadata : undefined;
+		const categories = Array.isArray(item.categories)
+			? item.categories.filter((c): c is string => typeof c === "string")
+			: undefined;
+		const score = typeof item.score === "number" ? item.score : undefined;
+
+		results.push({
+			id,
+			memory,
+			user_id,
+			created_at,
+			updated_at,
+			metadata,
+			categories,
+			score,
+		});
+	}
+
+	return results;
+}
+
+function parseListResults(raw: unknown): ListMemoryResult[] {
+	const items: unknown[] = Array.isArray(raw)
+		? raw
+		: isRecord(raw) && Array.isArray(raw.results)
+			? raw.results
+			: [];
+
+	const results: ListMemoryResult[] = [];
+	for (const item of items) {
+		if (!isRecord(item)) continue;
+		const id = typeof item.id === "string" ? item.id : null;
+		const memory = typeof item.memory === "string" ? item.memory : null;
+		if (!id || !memory) continue;
+
+		const created_at = typeof item.created_at === "string" ? item.created_at : "";
+		const updated_at = typeof item.updated_at === "string" ? item.updated_at : "";
+		const owner = typeof item.owner === "string" ? item.owner : undefined;
+		const metadata = isRecord(item.metadata) ? item.metadata : undefined;
+
+		results.push({ id, memory, created_at, updated_at, owner, metadata });
+	}
+
+	return results;
+}
+
+async function fetchMetadataForIds(params: {
+	apiKey: string;
+	userId: string;
+	ids: readonly string[];
+}): Promise<Map<string, Record<string, unknown>>> {
+	const apiKey = params.apiKey;
+	const userId = params.userId;
+	const ids = params.ids;
+
+	const idSet = new Set(ids.filter((id) => typeof id === "string" && id.length > 0));
+	const metadataById = new Map<string, Record<string, unknown>>();
+	if (idSet.size === 0) return metadataById;
+
+	const maxPages = 5;
+	const pageSize = 100;
+
+	for (let page = 1; page <= maxPages; page++) {
+		// Use trailing slash to avoid redirect (some servers convert POST -> GET on 301/302).
+		const resp = await fetch(`${API_BASE_URL}/v2/memories/`, {
+			method: "POST",
+			headers: {
+				Authorization: `Token ${apiKey}`,
+				"Content-Type": "application/json",
+				Accept: "application/json",
+			},
+			body: JSON.stringify({
+				filters: { user_id: userId },
+				version: "v2",
+				page,
+				page_size: pageSize,
+			}),
+		});
+
+		if (!resp.ok) {
+			break;
+		}
+
+		const raw = (await resp.json()) as unknown;
+		const memories = parseListResults(raw);
+
+		let matchedThisPage = 0;
+		for (const mem of memories) {
+			if (!idSet.has(mem.id)) continue;
+			if (isRecord(mem.metadata)) {
+				metadataById.set(mem.id, mem.metadata);
+				matchedThisPage++;
+			}
+		}
+
+		// Stop early if we've resolved all IDs
+		if (metadataById.size >= idSet.size) break;
+
+		// If this page had no results, we're done
+		if (memories.length === 0) break;
+
+		// If we didn't even see full page size, assume end
+		if (memories.length < pageSize) break;
+
+		// If we saw no matches, still continue a couple pages in case ordering differs
+		if (matchedThisPage === 0 && page >= 2) {
+			// Likely not going to find these IDs via list (or list API behavior changed)
+			break;
+		}
+	}
+
+	return metadataById;
+}
+
 /**
  * Mem0 Provider Implementation
  */
@@ -103,16 +250,22 @@ const mem0Provider: BaseProvider = {
 		content: string,
 		metadata?: Record<string, unknown>,
 	): Promise<MemoryRecord> {
+		const scopedUserId = getScopedUserId(scope);
 
 		const response = await apiRequest<AddMemoryResponse[]>("/v1/memories/", {
 			method: "POST",
 			body: JSON.stringify({
-				user_id: scope.user_id, // user_id includes run_id for scope isolation
+				user_id: scopedUserId,
 				messages: [{ role: "user", content }],
-				metadata: metadata ?? {},
+				metadata: {
+					...metadata,
+					scope_user_id: scope.user_id,
+					scope_run_id: scope.run_id,
+					scope_session_id: scope.session_id,
+					scope_namespace: scope.namespace,
+				},
 			}),
 		});
-
 
 		// Mem0 returns an array of memory events
 		const firstResult = response[0];
@@ -129,30 +282,51 @@ const mem0Provider: BaseProvider = {
 		query: string,
 		limit = 10,
 	): Promise<RetrievalItem[]> {
+		const scopedUserId = getScopedUserId(scope);
 
-		const response = await apiRequest<SearchResult[]>("/v2/memories/search/", {
+		const raw = await apiRequest<unknown>("/v2/memories/search/", {
 			method: "POST",
 			body: JSON.stringify({
 				query,
 				filters: {
-					user_id: scope.user_id, // user_id includes run_id for scope isolation
+					user_id: scopedUserId,
 				},
 				version: "v2",
 				top_k: limit,
 			}),
 		});
 
-		return response.map((result) => ({
-			record: {
-				id: result.id,
-				context: result.memory,
-				metadata: (result.metadata as Record<string, unknown>) ?? {},
-				timestamp: result.created_at
-					? new Date(result.created_at).getTime()
-					: Date.now(),
-			},
-			score: result.score ?? 0.5,
-		}));
+		const response = parseSearchResults(raw);
+
+		// Some Mem0 search output formats omit metadata. If so, backfill metadata
+		// for the retrieved IDs via the list API so retrieval metrics can still
+		// map results to benchmark session IDs.
+		const needsMetadataBackfill = response.some((r) => !isRecord(r.metadata));
+		const metadataById = needsMetadataBackfill
+			? await fetchMetadataForIds({
+					apiKey: getApiKey(),
+					userId: scopedUserId,
+					ids: response.map((r) => r.id),
+				})
+			: new Map<string, Record<string, unknown>>();
+
+		return response.map((result) => {
+			const meta =
+				(isRecord(result.metadata) ? result.metadata : metadataById.get(result.id)) ??
+				{};
+
+			return {
+				record: {
+					id: result.id,
+					context: result.memory,
+					metadata: meta,
+					timestamp: result.created_at
+						? new Date(result.created_at).getTime()
+						: Date.now(),
+				},
+				score: result.score ?? 0.5,
+			};
+		});
 	},
 
 	async delete_memory(
@@ -215,19 +389,22 @@ const mem0Provider: BaseProvider = {
 		limit = 100,
 		offset = 0,
 	): Promise<MemoryRecord[]> {
+		const scopedUserId = getScopedUserId(scope);
 		const page = Math.floor(offset / limit) + 1;
 
-		const response = await apiRequest<ListMemoryResult[]>("/v2/memories", {
+		const raw = await apiRequest<unknown>("/v2/memories/", {
 			method: "POST",
 			body: JSON.stringify({
 				filters: {
-					user_id: scope.user_id,
+					user_id: scopedUserId,
 				},
 				version: "v2",
 				page,
 				page_size: limit,
 			}),
 		});
+
+		const response = parseListResults(raw);
 
 		return response.map((doc) => ({
 			id: doc.id,
@@ -244,7 +421,7 @@ const mem0Provider: BaseProvider = {
 				retrieve_memory: true,
 				delete_memory: true,
 			},
-				optional_operations: {
+			optional_operations: {
 				update_memory: true,
 				list_memories: true,
 				reset_scope: false,

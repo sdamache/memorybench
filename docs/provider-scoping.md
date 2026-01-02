@@ -18,8 +18,8 @@ How each provider maps MemoryBench's `ScopeContext` to its native isolation mech
 | Provider | Isolation Field | Mapping | Notes |
 |----------|-----------------|---------|-------|
 | **LocalBaseline** | In-memory key | `${user_id}:${run_id}:${id}` | Full scope in key |
-| **Supermemory** | `containerTag` | `memorybench_${user_id}_${run_id}` | Tag-based filtering |
-| **Mem0** | `user_id` filter | `scope.user_id` directly | Run isolation via user_id format |
+| **Supermemory** | `containerTag` | `memorybench_${run12}_${scopeHash12}` | Hash includes session_id for per-case isolation |
+| **Mem0** | `user_id` filter | `memorybench_${run12}_${scopeHash12}` | Hash includes session_id for per-case isolation |
 | **ContextualRetrieval** | DB `run_id` column | `scope.run_id` | PostgreSQL row filtering |
 
 ## Async Indexing

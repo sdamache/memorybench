@@ -32,12 +32,23 @@ function getApiKey(): string {
 
 /**
  * Generate a container tag for scope isolation
- * Format: memorybench_{user_id}_{run_id}
+ * Format: memorybench_{run12}_{scopeHash12}
+ *
+ * Note: We intentionally include scope.session_id (when present) via a hash to ensure
+ * per-case isolation during concurrent execution. Using only user_id/run_id causes
+ * cross-case contamination and degraded benchmark scores.
  */
 function getScopeTag(scope: ScopeContext): string {
 	// Sanitize to alphanumeric with hyphens and underscores only
-	const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
-	return `memorybench_${sanitize(scope.user_id)}_${sanitize(scope.run_id)}`;
+	const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+	const sessionKey = scope.session_id ?? scope.namespace ?? "default";
+	const hasher = new Bun.CryptoHasher("sha256");
+	hasher.update(`${scope.user_id}|${scope.run_id}|${sessionKey}`);
+	const scopeHash = hasher.digest("hex").slice(0, 12);
+
+	const runPart = sanitize(scope.run_id).slice(0, 12);
+	return `memorybench_${runPart}_${scopeHash}`;
 }
 
 /**
@@ -145,6 +156,8 @@ const supermemoryProvider: BaseProvider = {
 					...metadata,
 					scope_user_id: scope.user_id,
 					scope_run_id: scope.run_id,
+					scope_session_id: scope.session_id,
+					scope_namespace: scope.namespace,
 				},
 			}),
 		});
