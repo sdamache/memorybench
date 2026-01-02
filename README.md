@@ -29,6 +29,9 @@ bun run index.ts eval --providers LocalBaseline --benchmarks RAG-template-benchm
 # Run with concurrent execution for faster results
 bun run index.ts eval --providers LocalBaseline --benchmarks RAG-template-benchmark --concurrency 4
 
+# Run a smaller subset (useful for long benchmarks like LoCoMo/LongMemEval)
+bun run index.ts eval --providers mem0 --benchmarks LoCoMo --limit 5
+
 # Resume an interrupted run
 bun run index.ts eval --resume <run_id>
 
@@ -76,6 +79,17 @@ bun run index.ts eval \
 ```
 
 This executes up to 4 benchmark cases simultaneously per provider/benchmark combination.
+
+### Quick Iteration With `--limit`
+
+For long-running benchmarks, cap the number of cases per benchmark:
+
+```bash
+bun run index.ts eval \
+  --providers mem0 supermemory \
+  --benchmarks LoCoMo \
+  --limit 5
+```
 
 ### Understanding Output
 

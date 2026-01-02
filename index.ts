@@ -244,6 +244,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 	const benchmarks: string[] = [];
 	let concurrency = 1;
 	let resumeRunId: string | undefined;
+	let caseLimit: number | undefined;
 
 	// Parse arguments
 	for (let i = 0; i < rawArgs.length; i++) {
@@ -274,6 +275,16 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 			if (isNaN(concurrency) || concurrency < 1) {
 				throw new Error("--concurrency must be a positive integer");
 			}
+		} else if (arg === "--limit" || arg === "-l") {
+			i++;
+			if (i >= rawArgs.length || !rawArgs[i]) {
+				throw new Error("--limit requires a value. Usage: --limit <number>");
+			}
+			const parsed = Number.parseInt(rawArgs[i]!, 10);
+			if (!Number.isFinite(parsed) || parsed < 1) {
+				throw new Error("--limit must be a positive integer");
+			}
+			caseLimit = parsed;
 		} else if (arg === "--resume") {
 			i++;
 			if (i >= rawArgs.length || !rawArgs[i]) {
@@ -313,6 +324,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 		providers,
 		benchmarks,
 		concurrency,
+		...(caseLimit ? { case_limit: caseLimit } : {}),
 	};
 
 	// Execute runner (with resume if specified)
@@ -420,7 +432,7 @@ async function main(): Promise<void> {
 Memory Benchmark CLI
 
 Usage:
-  bun run index.ts eval --providers <provider1> [provider2...] --benchmarks <benchmark1> [benchmark2...] [--concurrency N]
+  bun run index.ts eval --providers <provider1> [provider2...] --benchmarks <benchmark1> [benchmark2...] [--concurrency N] [--limit N]
   bun run index.ts explore --run <run_id> [--port N]
   bun run index.ts list benchmarks [--json]
   bun run index.ts list providers [--json]
@@ -430,6 +442,7 @@ Commands:
     --providers, -p   Provider names to evaluate (required)
     --benchmarks, -b  Benchmark names to run (required)
     --concurrency, -c Max parallel case executions (default: 1)
+    --limit, -l       Max cases per benchmark (default: all)
 
   explore             Launch the interactive results explorer
     --run, -r         Run ID to visualize (e.g., run_1735000000000_abc)
