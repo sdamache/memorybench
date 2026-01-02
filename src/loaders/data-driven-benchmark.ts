@@ -393,9 +393,15 @@ export async function createDataDrivenBenchmark(
 						projectId: manifest.evaluation.project_id,
 					};
 
+					// Align answer synthesis context with retrieval_limit (don't cap at 5 when K is larger)
+					const answerContextLimit = Math.min(
+						retrievedContext.length,
+						manifest.query.retrieval_limit,
+					);
+
 					generatedAnswer = await generateAnswerFromContext(
 						question,
-						retrievedContext.slice(0, 5), // Use top 5 results
+						retrievedContext.slice(0, answerContextLimit),
 						judgeConfig,
 					);
 				} else {
