@@ -15,7 +15,8 @@ import type {
 } from "../../types/core";
 import type { BaseProvider } from "../../types/provider";
 
-const API_BASE_URL = process.env.SUPERMEMORY_API_URL ?? "https://api.supermemory.ai/v3";
+const API_BASE_URL =
+	process.env.SUPERMEMORY_API_URL ?? "https://api.supermemory.ai/v3";
 
 /**
  * Get API key from environment
@@ -132,6 +133,56 @@ interface ListResponse {
 	};
 }
 
+function isTerminalStatus(status: string): boolean {
+	const normalized = status.trim().toLowerCase();
+	return normalized === "done" || normalized === "failed";
+}
+
+async function fetchDocumentsForIds(params: {
+	containerTag: string;
+	ids: readonly string[];
+}): Promise<Map<string, ListDocument>> {
+	const containerTag = params.containerTag;
+	const ids = params.ids;
+
+	const idSet = new Set(
+		ids.filter((id) => typeof id === "string" && id.length > 0),
+	);
+	const found = new Map<string, ListDocument>();
+	if (idSet.size === 0) return found;
+
+	const pageSize = 100;
+	const maxPages = 10;
+
+	for (let page = 1; page <= maxPages; page++) {
+		const response = await apiRequest<ListResponse>("/documents/list", {
+			method: "POST",
+			body: JSON.stringify({
+				containerTags: [containerTag],
+				limit: pageSize,
+				page,
+				order: "desc",
+				sort: "createdAt",
+			}),
+		});
+
+		for (const doc of response.memories) {
+			if (idSet.has(doc.id)) {
+				found.set(doc.id, doc);
+			}
+			if (doc.customId && idSet.has(doc.customId)) {
+				found.set(doc.customId, doc);
+			}
+		}
+
+		if (found.size >= idSet.size) break;
+		if (response.memories.length === 0) break;
+		if (page >= response.pagination.totalPages) break;
+	}
+
+	return found;
+}
+
 /**
  * Supermemory Provider Implementation
  */
@@ -175,7 +226,7 @@ const supermemoryProvider: BaseProvider = {
 		query: string,
 		limit = 10,
 	): Promise<RetrievalItem[]> {
-		// Use containerTags for scope isolation (with 10s per-session wait, indexing should complete)
+		// Use containerTags for scope isolation
 		const containerTag = getScopeTag(scope);
 		const response = await apiRequest<SearchResponse>("/search", {
 			method: "POST",
@@ -198,6 +249,52 @@ const supermemoryProvider: BaseProvider = {
 			},
 			score: result.score,
 		}));
+	},
+
+	async await_convergence(
+		scope: ScopeContext,
+		ingestedIds: string[],
+		timeoutMs: number,
+	): Promise<void> {
+		const containerTag = getScopeTag(scope);
+		const uniqueIds = Array.from(
+			new Set(
+				ingestedIds.filter((id) => typeof id === "string" && id.length > 0),
+			),
+		);
+		if (uniqueIds.length === 0) return;
+
+		const deadline = Date.now() + timeoutMs;
+		const pollIntervalMs = 2000;
+
+		while (true) {
+			try {
+				const docsById = await fetchDocumentsForIds({
+					containerTag,
+					ids: uniqueIds,
+				});
+
+				let pending = 0;
+				for (const id of uniqueIds) {
+					const doc = docsById.get(id);
+					if (!doc) {
+						pending++;
+						continue;
+					}
+
+					if (typeof doc.status !== "string" || !isTerminalStatus(doc.status)) {
+						pending++;
+					}
+				}
+
+				if (pending === 0) return;
+			} catch {
+				// Ignore errors and rely on timeout fallback
+			}
+
+			if (Date.now() >= deadline) return;
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+		}
 	},
 
 	async delete_memory(
@@ -272,6 +369,46 @@ const supermemoryProvider: BaseProvider = {
 		}));
 	},
 
+	async reset_scope(scope: ScopeContext): Promise<boolean> {
+		const containerTag = getScopeTag(scope);
+		const pageSize = 100;
+		const maxPages = 50;
+
+		for (let page = 1; page <= maxPages; page++) {
+			let response: ListResponse;
+			try {
+				response = await apiRequest<ListResponse>("/documents/list", {
+					method: "POST",
+					body: JSON.stringify({
+						containerTags: [containerTag],
+						limit: pageSize,
+						page,
+						order: "desc",
+						sort: "createdAt",
+					}),
+				});
+			} catch {
+				return false;
+			}
+
+			if (response.memories.length === 0) break;
+
+			for (const doc of response.memories) {
+				try {
+					await apiRequest(`/documents/${encodeURIComponent(doc.id)}`, {
+						method: "DELETE",
+					});
+				} catch {
+					// Ignore delete errors during cleanup
+				}
+			}
+
+			if (page >= response.pagination.totalPages) break;
+		}
+
+		return true;
+	},
+
 	async get_capabilities(): Promise<ProviderCapabilities> {
 		return {
 			core_operations: {
@@ -282,12 +419,12 @@ const supermemoryProvider: BaseProvider = {
 			optional_operations: {
 				update_memory: true,
 				list_memories: true,
-				reset_scope: false,
+				reset_scope: true,
 				get_capabilities: true,
 			},
 			system_flags: {
 				async_indexing: true, // Documents are queued for processing
-				convergence_wait_ms: 10000, // 10s wait for async indexing to complete
+				convergence_wait_ms: 30000, // Max wait for async indexing to complete
 			},
 			intelligence_flags: {
 				auto_extraction: true, // Extracts from URLs, PDFs, etc.
