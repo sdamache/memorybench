@@ -104,7 +104,9 @@ export function createSimpleIngestion(
 					ingestedCount: 0,
 					skippedCount: 0,
 					totalCount: 0,
-					errors: [`Content field '${mergedConfig.contentField}' not found in input`],
+					errors: [
+						`Content field '${mergedConfig.contentField}' not found in input`,
+					],
 				};
 			}
 
@@ -129,11 +131,10 @@ export function createSimpleIngestion(
 					typeof item === "string" ? item : JSON.stringify(item);
 
 				try {
-					const record = await provider.add_memory(
-						scope,
-						itemContent,
-						{ ...combinedMetadata, _index: i },
-					);
+					const record = await provider.add_memory(scope, itemContent, {
+						...combinedMetadata,
+						_index: i,
+					});
 					ingestedIds.push(record.id);
 				} catch (error) {
 					errors.push(
@@ -145,7 +146,23 @@ export function createSimpleIngestion(
 			// Respect provider convergence time if specified
 			const convergenceWaitMs = await getConvergenceWaitMs(provider);
 			if (convergenceWaitMs > 0) {
-				await new Promise((resolve) => setTimeout(resolve, convergenceWaitMs));
+				if (typeof provider.await_convergence === "function") {
+					try {
+						await provider.await_convergence(
+							scope,
+							ingestedIds,
+							convergenceWaitMs,
+						);
+					} catch {
+						await new Promise((resolve) =>
+							setTimeout(resolve, convergenceWaitMs),
+						);
+					}
+				} else {
+					await new Promise((resolve) =>
+						setTimeout(resolve, convergenceWaitMs),
+					);
+				}
 			}
 
 			return {

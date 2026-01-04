@@ -141,6 +141,20 @@ export interface BaseProvider {
 	 * @returns Capability data matching manifest
 	 */
 	get_capabilities?(): Promise<ProviderCapabilities>;
+
+	/**
+	 * Wait for recently ingested memories to become retrievable.
+	 * Optional hook for providers with async indexing pipelines.
+	 *
+	 * @param scope - Execution context for test isolation
+	 * @param ingestedIds - IDs written during ingestion (best-effort; may be empty)
+	 * @param timeoutMs - Max time to wait before returning
+	 */
+	await_convergence?(
+		scope: ScopeContext,
+		ingestedIds: string[],
+		timeoutMs: number,
+	): Promise<void>;
 }
 
 // =============================================================================
@@ -279,17 +293,16 @@ export class UnsupportedOperationError extends Error {
  * ```
  */
 export function isBaseProvider(obj: unknown): obj is BaseProvider {
+	if (typeof obj !== "object" || obj === null) {
+		return false;
+	}
+
+	const record = obj as Record<string, unknown>;
 	return (
-		typeof obj === "object" &&
-		obj !== null &&
-		"name" in obj &&
-		typeof (obj as any).name === "string" &&
-		"add_memory" in obj &&
-		typeof (obj as any).add_memory === "function" &&
-		"retrieve_memory" in obj &&
-		typeof (obj as any).retrieve_memory === "function" &&
-		"delete_memory" in obj &&
-		typeof (obj as any).delete_memory === "function"
+		typeof record.name === "string" &&
+		typeof record.add_memory === "function" &&
+		typeof record.retrieve_memory === "function" &&
+		typeof record.delete_memory === "function"
 	);
 }
 
@@ -311,17 +324,16 @@ export function isBaseProvider(obj: unknown): obj is BaseProvider {
  * ```
  */
 export function isLegacyTemplate(obj: unknown): obj is TemplateType {
+	if (typeof obj !== "object" || obj === null) {
+		return false;
+	}
+
+	const record = obj as Record<string, unknown>;
 	return (
-		typeof obj === "object" &&
-		obj !== null &&
-		"name" in obj &&
-		typeof (obj as any).name === "string" &&
-		"addContext" in obj &&
-		typeof (obj as any).addContext === "function" &&
-		"searchQuery" in obj &&
-		typeof (obj as any).searchQuery === "function" &&
-		"prepareProvider" in obj &&
-		typeof (obj as any).prepareProvider === "function"
+		typeof record.name === "string" &&
+		typeof record.addContext === "function" &&
+		typeof record.searchQuery === "function" &&
+		typeof record.prepareProvider === "function"
 	);
 }
 
@@ -350,11 +362,11 @@ export function validateScopeContext(scope: unknown): ScopeContext {
 
 	if (typeof scope !== "object" || scope === null) {
 		throw new Error(
-			"Invalid ScopeContext: expected object, got " + typeof scope,
+			`Invalid ScopeContext: expected object, got ${typeof scope}`,
 		);
 	}
 
-	const obj = scope as any;
+	const obj = scope as Record<string, unknown>;
 
 	// Validate required fields
 	if (!("user_id" in obj) || typeof obj.user_id !== "string") {
