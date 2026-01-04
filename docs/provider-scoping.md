@@ -24,10 +24,12 @@ How each provider maps MemoryBench's `ScopeContext` to its native isolation mech
 
 ## Async Indexing
 
-Providers with async indexing require convergence wait times before retrieval:
+Providers with async indexing require convergence before retrieval. MemoryBench
+prefers provider-level polling via `await_convergence` when available; otherwise
+it falls back to sleeping `convergence_wait_ms`.
 
 | Provider | `convergence_wait_ms` | Notes |
 |----------|----------------------|-------|
 | LocalBaseline | 0 | Synchronous |
-| Supermemory | 10,000 | Document processing queue |
-| Mem0 | 15,000 | Fact extraction pipeline |
+| Supermemory | 30,000 | Document processing queue |
+| Mem0 | 30,000 | Fact extraction pipeline |
