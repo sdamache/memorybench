@@ -15,6 +15,8 @@ import type {
 import type { BaseProvider } from "../../types/provider";
 
 const API_BASE_URL = "https://api.mem0.ai";
+const UUID_REGEX =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getScopedUserId(scope: ScopeContext): string {
 	const sanitize = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -122,8 +124,10 @@ function parseSearchResults(raw: unknown): SearchResult[] {
 		const memory = typeof item.memory === "string" ? item.memory : null;
 		if (!id || !memory) continue;
 
-		const created_at = typeof item.created_at === "string" ? item.created_at : "";
-		const updated_at = typeof item.updated_at === "string" ? item.updated_at : "";
+		const created_at =
+			typeof item.created_at === "string" ? item.created_at : "";
+		const updated_at =
+			typeof item.updated_at === "string" ? item.updated_at : "";
 		const user_id = typeof item.user_id === "string" ? item.user_id : undefined;
 		const metadata = isRecord(item.metadata) ? item.metadata : undefined;
 		const categories = Array.isArray(item.categories)
@@ -160,8 +164,10 @@ function parseListResults(raw: unknown): ListMemoryResult[] {
 		const memory = typeof item.memory === "string" ? item.memory : null;
 		if (!id || !memory) continue;
 
-		const created_at = typeof item.created_at === "string" ? item.created_at : "";
-		const updated_at = typeof item.updated_at === "string" ? item.updated_at : "";
+		const created_at =
+			typeof item.created_at === "string" ? item.created_at : "";
+		const updated_at =
+			typeof item.updated_at === "string" ? item.updated_at : "";
 		const owner = typeof item.owner === "string" ? item.owner : undefined;
 		const metadata = isRecord(item.metadata) ? item.metadata : undefined;
 
@@ -180,7 +186,9 @@ async function fetchMetadataForIds(params: {
 	const userId = params.userId;
 	const ids = params.ids;
 
-	const idSet = new Set(ids.filter((id) => typeof id === "string" && id.length > 0));
+	const idSet = new Set(
+		ids.filter((id) => typeof id === "string" && id.length > 0),
+	);
 	const metadataById = new Map<string, Record<string, unknown>>();
 	if (idSet.size === 0) return metadataById;
 
@@ -237,6 +245,83 @@ async function fetchMetadataForIds(params: {
 	}
 
 	return metadataById;
+}
+
+async function fetchIdsPresentInList(params: {
+	apiKey: string;
+	userId: string;
+	ids: readonly string[];
+}): Promise<Set<string>> {
+	const apiKey = params.apiKey;
+	const userId = params.userId;
+	const ids = params.ids;
+
+	const idSet = new Set(
+		ids.filter((id) => typeof id === "string" && id.length > 0),
+	);
+	const found = new Set<string>();
+	if (idSet.size === 0) return found;
+
+	const maxPages = 5;
+	const pageSize = 100;
+
+	for (let page = 1; page <= maxPages; page++) {
+		// Use trailing slash to avoid redirect (some servers convert POST -> GET on 301/302).
+		const resp = await fetch(`${API_BASE_URL}/v2/memories/`, {
+			method: "POST",
+			headers: {
+				Authorization: `Token ${apiKey}`,
+				"Content-Type": "application/json",
+				Accept: "application/json",
+			},
+			body: JSON.stringify({
+				filters: { user_id: userId },
+				version: "v2",
+				page,
+				page_size: pageSize,
+			}),
+		});
+
+		if (!resp.ok) {
+			break;
+		}
+
+		const raw = (await resp.json()) as unknown;
+		const memories = parseListResults(raw);
+
+		for (const mem of memories) {
+			if (idSet.has(mem.id)) {
+				found.add(mem.id);
+			}
+		}
+
+		if (found.size >= idSet.size) break;
+		if (memories.length === 0) break;
+		if (memories.length < pageSize) break;
+	}
+
+	return found;
+}
+
+async function getEventStatus(params: {
+	apiKey: string;
+	eventId: string;
+}): Promise<string | null> {
+	const resp = await fetch(
+		`${API_BASE_URL}/v1/event/${encodeURIComponent(params.eventId)}/`,
+		{
+			headers: {
+				Authorization: `Token ${params.apiKey}`,
+				Accept: "application/json",
+			},
+		},
+	);
+
+	if (!resp.ok) return null;
+
+	const raw = (await resp.json()) as unknown;
+	if (!isRecord(raw)) return null;
+	return typeof raw.status === "string" ? raw.status : null;
 }
 
 /**
@@ -312,8 +397,9 @@ const mem0Provider: BaseProvider = {
 
 		return response.map((result) => {
 			const meta =
-				(isRecord(result.metadata) ? result.metadata : metadataById.get(result.id)) ??
-				{};
+				(isRecord(result.metadata)
+					? result.metadata
+					: metadataById.get(result.id)) ?? {};
 
 			return {
 				record: {
@@ -329,13 +415,79 @@ const mem0Provider: BaseProvider = {
 		});
 	},
 
+	async await_convergence(
+		scope: ScopeContext,
+		ingestedIds: string[],
+		timeoutMs: number,
+	): Promise<void> {
+		const scopedUserId = getScopedUserId(scope);
+		const apiKey = getApiKey();
+
+		const uniqueIds = Array.from(
+			new Set(
+				ingestedIds.filter((id) => typeof id === "string" && id.length > 0),
+			),
+		);
+		if (uniqueIds.length === 0) return;
+
+		const deadline = Date.now() + timeoutMs;
+		const pollIntervalMs = 1000;
+		const completed = new Set<string>();
+
+		// Determine if these look like Mem0 event IDs (async_mode) by probing one ID.
+		let useEventStatus = false;
+		try {
+			const firstId = uniqueIds[0];
+			if (!firstId) {
+				return;
+			}
+			const status = await getEventStatus({
+				apiKey,
+				eventId: firstId,
+			});
+			useEventStatus = typeof status === "string";
+			if (status === "SUCCEEDED" || status === "FAILED") {
+				completed.add(firstId);
+			}
+		} catch {
+			useEventStatus = false;
+		}
+
+		while (true) {
+			try {
+				if (useEventStatus) {
+					for (const eventId of uniqueIds) {
+						if (completed.has(eventId)) continue;
+						const status = await getEventStatus({ apiKey, eventId });
+						if (status === "SUCCEEDED" || status === "FAILED") {
+							completed.add(eventId);
+						}
+					}
+
+					if (completed.size >= uniqueIds.length) return;
+				} else {
+					const found = await fetchIdsPresentInList({
+						apiKey,
+						userId: scopedUserId,
+						ids: uniqueIds,
+					});
+					if (found.size >= uniqueIds.length) return;
+				}
+			} catch {
+				// Ignore errors and rely on timeout fallback
+			}
+
+			if (Date.now() >= deadline) return;
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+		}
+	},
+
 	async delete_memory(
 		scope: ScopeContext,
 		memory_id: string,
 	): Promise<boolean> {
 		// Mem0 requires valid UUIDs for deletion - skip if not a UUID
-		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-		if (!uuidRegex.test(memory_id)) {
+		if (!UUID_REGEX.test(memory_id)) {
 			// Not a valid UUID, skip deletion silently
 			return true;
 		}
@@ -344,7 +496,7 @@ const mem0Provider: BaseProvider = {
 				method: "DELETE",
 			});
 			return true;
-		} catch (error) {
+		} catch {
 			// Silently handle delete errors for cleanup
 			return true;
 		}
@@ -357,9 +509,10 @@ const mem0Provider: BaseProvider = {
 		metadata?: Record<string, unknown>,
 	): Promise<MemoryRecord> {
 		// Mem0 requires valid UUIDs for updates
-		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-		if (!uuidRegex.test(memory_id)) {
-			throw new Error(`Invalid memory ID for update: ${memory_id} (must be UUID format)`);
+		if (!UUID_REGEX.test(memory_id)) {
+			throw new Error(
+				`Invalid memory ID for update: ${memory_id} (must be UUID format)`,
+			);
 		}
 
 		const response = await apiRequest<{
@@ -380,7 +533,9 @@ const mem0Provider: BaseProvider = {
 			id: response.id,
 			context: response.text,
 			metadata: (response.metadata as Record<string, unknown>) ?? {},
-			timestamp: response.updated_at ? new Date(response.updated_at).getTime() : Date.now(),
+			timestamp: response.updated_at
+				? new Date(response.updated_at).getTime()
+				: Date.now(),
 		};
 	},
 
@@ -410,8 +565,51 @@ const mem0Provider: BaseProvider = {
 			id: doc.id,
 			context: doc.memory,
 			metadata: (doc.metadata as Record<string, unknown>) ?? {},
-			timestamp: doc.created_at ? new Date(doc.created_at).getTime() : Date.now(),
+			timestamp: doc.created_at
+				? new Date(doc.created_at).getTime()
+				: Date.now(),
 		}));
+	},
+
+	async reset_scope(scope: ScopeContext): Promise<boolean> {
+		const scopedUserId = getScopedUserId(scope);
+		const pageSize = 100;
+		const maxPages = 50;
+
+		for (let page = 1; page <= maxPages; page++) {
+			let raw: unknown;
+			try {
+				raw = await apiRequest<unknown>("/v2/memories/", {
+					method: "POST",
+					body: JSON.stringify({
+						filters: { user_id: scopedUserId },
+						version: "v2",
+						page,
+						page_size: pageSize,
+					}),
+				});
+			} catch {
+				return false;
+			}
+
+			const memories = parseListResults(raw);
+			if (memories.length === 0) break;
+
+			for (const mem of memories) {
+				if (!UUID_REGEX.test(mem.id)) continue;
+				try {
+					await apiRequest(`/v1/memories/${encodeURIComponent(mem.id)}`, {
+						method: "DELETE",
+					});
+				} catch {
+					// Ignore delete errors during cleanup
+				}
+			}
+
+			if (memories.length < pageSize) break;
+		}
+
+		return true;
 	},
 
 	async get_capabilities(): Promise<ProviderCapabilities> {
@@ -424,7 +622,7 @@ const mem0Provider: BaseProvider = {
 			optional_operations: {
 				update_memory: true,
 				list_memories: true,
-				reset_scope: false,
+				reset_scope: true,
 				get_capabilities: true,
 			},
 			system_flags: {

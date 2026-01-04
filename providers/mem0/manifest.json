@@ -11,10 +11,10 @@
 			"retrieve_memory": true,
 			"delete_memory": true
 		},
-			"optional_operations": {
+		"optional_operations": {
 			"update_memory": true,
 			"list_memories": true,
-			"reset_scope": false,
+			"reset_scope": true,
 			"get_capabilities": true
 		},
 		"system_flags": {
