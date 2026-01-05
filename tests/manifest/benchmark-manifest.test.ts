@@ -6,8 +6,8 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-	validateBenchmarkManifest,
 	formatManifestErrors,
+	validateBenchmarkManifest,
 } from "../../types/benchmark-manifest";
 
 describe("validateBenchmarkManifest", () => {
@@ -125,7 +125,7 @@ describe("validateBenchmarkManifest", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.errors).toBeDefined();
-		expect(result.errors!.length).toBeGreaterThan(0);
+		expect(result.errors?.length).toBeGreaterThan(0);
 	});
 
 	test("rejects unknown ingestion strategy", () => {

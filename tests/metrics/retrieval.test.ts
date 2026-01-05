@@ -5,7 +5,6 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import type { RetrievalItem } from "../../types/core";
 import {
 	averagePrecision,
 	calculateRetrievalMetrics,
@@ -15,6 +14,7 @@ import {
 	precisionAtK,
 	recallAtK,
 } from "../../src/metrics/retrieval";
+import type { RetrievalItem } from "../../types/core";
 
 /**
  * Create a mock retrieval item
@@ -29,6 +29,7 @@ function mockRetrievalItem(
 			id,
 			context,
 			timestamp: Date.now(),
+			metadata: {},
 		},
 		score,
 	};

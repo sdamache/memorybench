@@ -67,15 +67,15 @@ describe("LegacyProviderAdapter (T040)", () => {
 
 		// Should have called addContext with enhanced metadata
 		expect(capturedData).toBeDefined();
-		expect(capturedData!.context).toBe("test content");
-		expect(capturedData!.metadata.key).toBe("value");
-		expect(capturedData!.metadata._scope).toEqual({
+		expect(capturedData?.context).toBe("test content");
+		expect(capturedData?.metadata.key).toBe("value");
+		expect(capturedData?.metadata._scope).toEqual({
 			user_id: "user-1",
 			run_id: "run-1",
 			session_id: undefined,
 			namespace: undefined,
 		});
-		expect(capturedData!.metadata._generated_id).toBeDefined();
+		expect(capturedData?.metadata._generated_id).toBeDefined();
 	});
 
 	test("retrieve_memory calls searchQuery and wraps results", async () => {
@@ -98,12 +98,12 @@ describe("LegacyProviderAdapter (T040)", () => {
 
 		// Should return RetrievalItem array
 		expect(results).toHaveLength(2);
-		expect(results[0]!.record.id).toBe("1");
-		expect(results[0]!.record.context).toBe("Result for test query");
-		expect(results[0]!.score).toBe(0.9);
-		expect(results[1]!.record.id).toBe("2");
-		expect(results[1]!.record.context).toBe("Another result");
-		expect(results[1]!.score).toBe(0.7);
+		expect(results[0]?.record.id).toBe("1");
+		expect(results[0]?.record.context).toBe("Result for test query");
+		expect(results[0]?.score).toBe(0.9);
+		expect(results[1]?.record.id).toBe("2");
+		expect(results[1]?.record.context).toBe("Another result");
+		expect(results[1]?.score).toBe(0.7);
 	});
 
 	test("delete_memory throws UnsupportedOperationError", async () => {
@@ -134,7 +134,7 @@ describe("LegacyProviderAdapter (T040)", () => {
 	test("legacy provider auto-detected and wrapped by registry", async () => {
 		const { ProviderRegistry } = await import("../../src/loaders/providers");
 
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		// Reset and load fixtures
 		ProviderRegistry.reset();

@@ -59,7 +59,7 @@ export const mockProvider: BaseProvider = {
 			{
 				record: {
 					id: "mock_result_1",
-					context: "Mock result for: " + query,
+					context: `Mock result for: ${query}`,
 					metadata: {},
 					timestamp: Date.now(),
 				},

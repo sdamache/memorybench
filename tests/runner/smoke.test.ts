@@ -7,11 +7,11 @@
  * @module tests/runner/smoke.test.ts
  */
 
-import { describe, test, expect, beforeAll } from "bun:test";
-import { run } from "../../src/runner/runner";
-import { buildRunPlan } from "../../src/runner/gating";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { BenchmarkRegistry } from "../../src/loaders/benchmarks";
 import { ProviderRegistry } from "../../src/loaders/providers";
+import { buildRunPlan } from "../../src/runner/gating";
+import { run } from "../../src/runner/runner";
 import type { RunSelection } from "../../src/runner/types";
 
 // =============================================================================
@@ -74,7 +74,9 @@ describe("US1: Core Evaluation - End-to-End Run", () => {
 
 		// Verify timing data is captured
 		if (output.results.length > 0) {
-			const firstResult = output.results[0]!;
+			const firstResult = output.results[0];
+			expect(firstResult).toBeDefined();
+			if (!firstResult) throw new Error("Expected at least one result");
 			expect(firstResult.duration_ms).toBeGreaterThanOrEqual(0);
 			expect(firstResult.provider_name).toBe("LocalBaseline");
 			expect(firstResult.benchmark_name).toBe("RAG-template-benchmark");
@@ -116,13 +118,13 @@ describe("US2: Capability Gating - Skip Incompatible Combinations", () => {
 			// If skipped, must have skip_reason
 			if (!entry.eligible) {
 				expect(entry.skip_reason).toBeDefined();
-				expect(entry.skip_reason!.provider_name).toBe(entry.provider_name);
-				expect(entry.skip_reason!.benchmark_name).toBe(entry.benchmark_name);
-				expect(entry.skip_reason!.missing_capabilities).toBeDefined();
-				expect(Array.isArray(entry.skip_reason!.missing_capabilities)).toBe(
+				expect(entry.skip_reason?.provider_name).toBe(entry.provider_name);
+				expect(entry.skip_reason?.benchmark_name).toBe(entry.benchmark_name);
+				expect(entry.skip_reason?.missing_capabilities).toBeDefined();
+				expect(Array.isArray(entry.skip_reason?.missing_capabilities)).toBe(
 					true,
 				);
-				expect(entry.skip_reason!.message).toBeDefined();
+				expect(entry.skip_reason?.message).toBeDefined();
 			}
 		}
 
@@ -192,8 +194,11 @@ describe("Integration: Deterministic Ordering", () => {
 		expect(plan1.entries.length).toBe(plan2.entries.length);
 
 		for (let i = 0; i < plan1.entries.length; i++) {
-			const entry1 = plan1.entries[i]!;
-			const entry2 = plan2.entries[i]!;
+			const entry1 = plan1.entries[i];
+			const entry2 = plan2.entries[i];
+			expect(entry1).toBeDefined();
+			expect(entry2).toBeDefined();
+			if (!entry1 || !entry2) throw new Error("Expected plan entries to exist");
 
 			expect(entry1.provider_name).toBe(entry2.provider_name);
 			expect(entry1.benchmark_name).toBe(entry2.benchmark_name);

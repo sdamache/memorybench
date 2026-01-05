@@ -8,16 +8,16 @@
  *
  * @module tests/metrics/performance
  */
-import { describe, expect, test, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
-	PhaseTimer,
 	APICallCollector,
-	calculateTimingStats,
-	aggregateTokenStats,
-	aggregateRunPerformance,
-	createPerformanceContext,
 	type CasePerformanceMetrics,
+	PhaseTimer,
 	type TokenStats,
+	aggregateRunPerformance,
+	aggregateTokenStats,
+	calculateTimingStats,
+	createPerformanceContext,
 } from "../../src/metrics/performance";
 
 // =============================================================================
@@ -294,6 +294,12 @@ describe("aggregateRunPerformance", () => {
 
 		const result = aggregateRunPerformance([caseMetrics]);
 
+		expect(result.by_phase.ingestion).toBeDefined();
+		expect(result.by_phase.retrieval).toBeDefined();
+		if (!result.by_phase.ingestion || !result.by_phase.retrieval) {
+			throw new Error("Expected phase metrics to be present");
+		}
+
 		expect(result.by_phase.ingestion.count).toBe(1);
 		expect(result.by_phase.ingestion.mean_ms).toBe(100);
 		expect(result.by_phase.retrieval.count).toBe(1);
@@ -305,18 +311,37 @@ describe("aggregateRunPerformance", () => {
 	test("aggregates multiple cases", () => {
 		const cases: CasePerformanceMetrics[] = [
 			{
-				phases: [{ phase: "ingestion", duration_ms: 100, started_at: "", ended_at: "" }],
+				phases: [
+					{
+						phase: "ingestion",
+						duration_ms: 100,
+						started_at: "",
+						ended_at: "",
+					},
+				],
 				api_calls: [],
 				total_duration_ms: 100,
 			},
 			{
-				phases: [{ phase: "ingestion", duration_ms: 200, started_at: "", ended_at: "" }],
+				phases: [
+					{
+						phase: "ingestion",
+						duration_ms: 200,
+						started_at: "",
+						ended_at: "",
+					},
+				],
 				api_calls: [],
 				total_duration_ms: 200,
 			},
 		];
 
 		const result = aggregateRunPerformance(cases);
+
+		expect(result.by_phase.ingestion).toBeDefined();
+		if (!result.by_phase.ingestion) {
+			throw new Error("Expected ingestion phase metrics to be present");
+		}
 
 		expect(result.by_phase.ingestion.count).toBe(2);
 		expect(result.by_phase.ingestion.mean_ms).toBe(150);
