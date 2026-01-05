@@ -4,19 +4,27 @@ import { processDocument } from "./src/add";
 import { initDatabase } from "./src/db";
 import { retrieve } from "./src/retrieve";
 
-await initDatabase();
+let dbInit: Promise<void> | null = null;
+async function ensureDatabase(): Promise<void> {
+	if (!dbInit) {
+		dbInit = initDatabase();
+	}
+	await dbInit;
+}
 
 export default {
 	name: "ContextualRetrieval",
 	addContext: async (data: PreparedData) => {
+		await ensureDatabase();
 		console.log(`Processing ContextualRetrieval context: ${data.context}`);
-		console.log(`Metadata:`, data.metadata);
+		console.log("Metadata:", data.metadata);
 
 		// Process the context as a document using contextual retrieval
 		await processDocument(data.context);
 	},
 
 	searchQuery: async (query: string) => {
+		await ensureDatabase();
 		console.log(`Searching with ContextualRetrieval: ${query}`);
 		const results = await retrieve(query);
 

@@ -4,19 +4,27 @@ import { addDocument } from "./src/add";
 import { initDatabase } from "./src/db";
 import { retrieve } from "./src/retrieve";
 
-await initDatabase();
+let dbInit: Promise<void> | null = null;
+async function ensureDatabase(): Promise<void> {
+	if (!dbInit) {
+		dbInit = initDatabase();
+	}
+	await dbInit;
+}
 
 export default {
 	name: "AQRAG",
 	addContext: async (data: PreparedData) => {
+		await ensureDatabase();
 		console.log(`Processing AQRAG context: ${data.context}`);
-		console.log(`Metadata:`, data.metadata);
+		console.log("Metadata:", data.metadata);
 
 		// Process the context as a document using AQRAG (with question generation)
 		await addDocument(data.context);
 	},
 
 	searchQuery: async (query: string) => {
+		await ensureDatabase();
 		console.log(`Searching with AQRAG (question-enhanced): ${query}`);
 		const results = await retrieve(query);
 

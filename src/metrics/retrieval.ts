@@ -49,6 +49,14 @@ export function extractIds(
 	const ids: string[] = [];
 
 	for (const result of results) {
+		// Prefer explicit session ID metadata when present.
+		// This avoids relying on providers preserving "=== Session: ..." headers in stored content.
+		const metaSessionId = result.record.metadata._sessionId;
+		if (typeof metaSessionId === "string" && metaSessionId.length > 0) {
+			ids.push(metaSessionId);
+			continue;
+		}
+
 		const extractedId = extractor(result.record.context);
 		if (extractedId) {
 			ids.push(extractedId);

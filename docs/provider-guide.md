@@ -97,6 +97,11 @@ Async memory backends don't immediately surface new memories. Set `convergence_w
 | Local database | 100-500ms |
 | Cloud with async processing | 5,000-30,000ms |
 
+If your provider can report readiness (e.g., a document status), implement
+`BaseProvider.await_convergence(scope, ingestedIds, timeoutMs)` to poll until
+newly ingested memories are retrievable. MemoryBench will prefer this hook over
+sleeping the full `convergence_wait_ms`.
+
 ## Step 2: Implement the Adapter
 
 Create `providers/my-provider/index.ts`:

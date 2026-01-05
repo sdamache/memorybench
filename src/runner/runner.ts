@@ -221,6 +221,7 @@ export async function executeCases(
 	benchmarkName: string,
 	runId: string,
 	concurrency: number = 1,
+	caseLimit?: number,
 	checkpoint?: Checkpoint | null,
 	writer?: ResultsWriter,
 ): Promise<{ results: RunCaseResult[]; checkpoint: Checkpoint | null }> {
@@ -233,14 +234,16 @@ export async function executeCases(
 
 	const benchmark = benchmarkEntry.benchmark;
 	const allCases = Array.from(benchmark.cases());
+	const limitedCases =
+		typeof caseLimit === "number" ? allCases.slice(0, caseLimit) : allCases;
 
 	// Filter out already-completed cases (for resume functionality)
 	const casesToRun = checkpoint
-		? allCases.filter((benchmarkCase) => {
+		? limitedCases.filter((benchmarkCase) => {
 				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
 				return !(caseKey in checkpoint.completed);
 		  })
-		: allCases;
+		: limitedCases;
 
 	if (concurrency === 1) {
 		// Sequential execution for concurrency=1
@@ -393,7 +396,11 @@ export async function executeRunPlan(
 		const benchmarkEntry = benchmarkRegistry.get(entry.benchmark_name);
 		if (benchmarkEntry) {
 			const caseCount = Array.from(benchmarkEntry.benchmark.cases()).length;
-			totalCases += caseCount;
+			const effectiveCount =
+				typeof selection.case_limit === "number"
+					? Math.min(caseCount, selection.case_limit)
+					: caseCount;
+			totalCases += effectiveCount;
 		}
 	}
 
@@ -435,10 +442,14 @@ export async function executeRunPlan(
 			const benchmarkEntry = benchmarkRegistry.get(entry.benchmark_name);
 			if (benchmarkEntry) {
 				const caseCount = Array.from(benchmarkEntry.benchmark.cases()).length;
+				const effectiveCount =
+					typeof selection.case_limit === "number"
+						? Math.min(caseCount, selection.case_limit)
+						: caseCount;
 				benchmarks.push({
 					name: entry.benchmark_name,
 					version: "1.0.0", // TODO: Get from benchmark metadata when available
-					case_count: caseCount,
+					case_count: effectiveCount,
 				});
 			}
 		}
@@ -469,6 +480,7 @@ export async function executeRunPlan(
 				entry.benchmark_name,
 				plan.run_id,
 				selection.concurrency,
+				selection.case_limit,
 				checkpoint,
 				writer,
 			);
@@ -528,6 +540,9 @@ export async function executeRunPlan(
 		providers: providerNames,
 		benchmarks: benchmarkNames,
 		concurrency: selection.concurrency, // Preserve original concurrency setting
+		...(typeof selection.case_limit === "number"
+			? { case_limit: selection.case_limit }
+			: {}),
 	};
 
 	return {

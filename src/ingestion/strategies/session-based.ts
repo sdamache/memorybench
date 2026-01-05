@@ -211,15 +211,20 @@ function getSessionIndicesToIngest(
 			}
 
 			// Get distributed sample of remaining indices
-			const remainingSampleSize = Math.max(sharedSampleSize - answerIndices.size, 5);
-			const sampleIndices = selectDistributedSample(totalSessions, remainingSampleSize);
+			const remainingSampleSize = Math.max(
+				sharedSampleSize - answerIndices.size,
+				5,
+			);
+			const sampleIndices = selectDistributedSample(
+				totalSessions,
+				remainingSampleSize,
+			);
 
 			// Combine answer indices with sample
 			const combined = new Set([...answerIndices, ...sampleIndices]);
 			return Array.from(combined).sort((a, b) => a - b);
 		}
 
-		case "full":
 		default: {
 			// Ingest all sessions
 			return Array.from({ length: totalSessions }, (_, i) => i);
@@ -319,7 +324,9 @@ export function createSessionBasedIngestion(
 
 				// Get answer session IDs from evidence field if configured
 				if (mergedConfig.evidenceField) {
-					const evidence = input[mergedConfig.evidenceField] as unknown[] | undefined;
+					const evidence = input[mergedConfig.evidenceField] as
+						| unknown[]
+						| undefined;
 					if (evidence && Array.isArray(evidence)) {
 						answerSessionIds = parseEvidenceToSessionIds(
 							evidence,
@@ -331,25 +338,25 @@ export function createSessionBasedIngestion(
 						| string[]
 						| undefined;
 				}
-				} else {
-					// Array format (LongMemEval-style)
-					const rawSessions = input[mergedConfig.sessionsField] as unknown;
-					if (!Array.isArray(rawSessions)) {
-						return {
-							ingestedIds: [],
-							ingestedCount: 0,
-							skippedCount: 0,
-							totalCount: 0,
-							errors: [
-								`Sessions field '${mergedConfig.sessionsField}' not found or not an array`,
-							],
-						};
-					}
-					sessions = rawSessions;
+			} else {
+				// Array format (LongMemEval-style)
+				const rawSessions = input[mergedConfig.sessionsField] as unknown;
+				if (!Array.isArray(rawSessions)) {
+					return {
+						ingestedIds: [],
+						ingestedCount: 0,
+						skippedCount: 0,
+						totalCount: 0,
+						errors: [
+							`Sessions field '${mergedConfig.sessionsField}' not found or not an array`,
+						],
+					};
+				}
+				sessions = rawSessions;
 
-					sessionIds = mergedConfig.sessionIdsField
-						? (input[mergedConfig.sessionIdsField] as string[] | undefined)
-						: undefined;
+				sessionIds = mergedConfig.sessionIdsField
+					? (input[mergedConfig.sessionIdsField] as string[] | undefined)
+					: undefined;
 				dates = mergedConfig.datesField
 					? (input[mergedConfig.datesField] as string[] | undefined)
 					: undefined;
@@ -433,7 +440,23 @@ export function createSessionBasedIngestion(
 			// Respect provider convergence time if specified
 			const convergenceWaitMs = await getConvergenceWaitMs(provider);
 			if (convergenceWaitMs > 0) {
-				await new Promise((resolve) => setTimeout(resolve, convergenceWaitMs));
+				if (typeof provider.await_convergence === "function") {
+					try {
+						await provider.await_convergence(
+							scope,
+							ingestedIds,
+							convergenceWaitMs,
+						);
+					} catch {
+						await new Promise((resolve) =>
+							setTimeout(resolve, convergenceWaitMs),
+						);
+					}
+				} else {
+					await new Promise((resolve) =>
+						setTimeout(resolve, convergenceWaitMs),
+					);
+				}
 			}
 
 			return {

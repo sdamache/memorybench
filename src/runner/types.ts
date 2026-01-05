@@ -27,6 +27,9 @@ export interface RunSelection {
 
 	/** Max parallel case executions (default: 1 = sequential) */
 	readonly concurrency: number;
+
+	/** Optional cap on cases per benchmark (for quick iterations) */
+	readonly case_limit?: number;
 }
 
 // =============================================================================

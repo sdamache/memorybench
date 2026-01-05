@@ -18,16 +18,18 @@ How each provider maps MemoryBench's `ScopeContext` to its native isolation mech
 | Provider | Isolation Field | Mapping | Notes |
 |----------|-----------------|---------|-------|
 | **LocalBaseline** | In-memory key | `${user_id}:${run_id}:${id}` | Full scope in key |
-| **Supermemory** | `containerTag` | `memorybench_${user_id}_${run_id}` | Tag-based filtering |
-| **Mem0** | `user_id` filter | `scope.user_id` directly | Run isolation via user_id format |
+| **Supermemory** | `containerTag` | `memorybench_${run12}_${scopeHash12}` | Hash includes session_id for per-case isolation |
+| **Mem0** | `user_id` filter | `memorybench_${run12}_${scopeHash12}` | Hash includes session_id for per-case isolation |
 | **ContextualRetrieval** | DB `run_id` column | `scope.run_id` | PostgreSQL row filtering |
 
 ## Async Indexing
 
-Providers with async indexing require convergence wait times before retrieval:
+Providers with async indexing require convergence before retrieval. MemoryBench
+prefers provider-level polling via `await_convergence` when available; otherwise
+it falls back to sleeping `convergence_wait_ms`.
 
 | Provider | `convergence_wait_ms` | Notes |
 |----------|----------------------|-------|
 | LocalBaseline | 0 | Synchronous |
-| Supermemory | 10,000 | Document processing queue |
-| Mem0 | 15,000 | Fact extraction pipeline |
+| Supermemory | 30,000 | Document processing queue |
+| Mem0 | 30,000 | Fact extraction pipeline |
