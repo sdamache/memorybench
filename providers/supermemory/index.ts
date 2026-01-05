@@ -372,9 +372,11 @@ const supermemoryProvider: BaseProvider = {
 	async reset_scope(scope: ScopeContext): Promise<boolean> {
 		const containerTag = getScopeTag(scope);
 		const pageSize = 100;
-		const maxPages = 50;
+		const maxIterations = 200;
 
-		for (let page = 1; page <= maxPages; page++) {
+		// Always fetch page 1 while deleting to avoid pagination shifting (deleting items
+		// causes later pages to move up, which can skip undeleted documents).
+		for (let iteration = 0; iteration < maxIterations; iteration++) {
 			let response: ListResponse;
 			try {
 				response = await apiRequest<ListResponse>("/documents/list", {
@@ -382,7 +384,7 @@ const supermemoryProvider: BaseProvider = {
 					body: JSON.stringify({
 						containerTags: [containerTag],
 						limit: pageSize,
-						page,
+						page: 1,
 						order: "desc",
 						sort: "createdAt",
 					}),
@@ -391,7 +393,7 @@ const supermemoryProvider: BaseProvider = {
 				return false;
 			}
 
-			if (response.memories.length === 0) break;
+			if (response.memories.length === 0) return true;
 
 			for (const doc of response.memories) {
 				try {
@@ -402,11 +404,10 @@ const supermemoryProvider: BaseProvider = {
 					// Ignore delete errors during cleanup
 				}
 			}
-
-			if (page >= response.pagination.totalPages) break;
 		}
 
-		return true;
+		// If we still haven't emptied the scope after many iterations, signal failure.
+		return false;
 	},
 
 	async get_capabilities(): Promise<ProviderCapabilities> {

@@ -574,9 +574,11 @@ const mem0Provider: BaseProvider = {
 	async reset_scope(scope: ScopeContext): Promise<boolean> {
 		const scopedUserId = getScopedUserId(scope);
 		const pageSize = 100;
-		const maxPages = 50;
+		const maxIterations = 200;
 
-		for (let page = 1; page <= maxPages; page++) {
+		// Always fetch page 1 while deleting to avoid pagination shifting (deleting items
+		// causes later pages to move up, which can skip undeleted memories).
+		for (let iteration = 0; iteration < maxIterations; iteration++) {
 			let raw: unknown;
 			try {
 				raw = await apiRequest<unknown>("/v2/memories/", {
@@ -584,7 +586,7 @@ const mem0Provider: BaseProvider = {
 					body: JSON.stringify({
 						filters: { user_id: scopedUserId },
 						version: "v2",
-						page,
+						page: 1,
 						page_size: pageSize,
 					}),
 				});
@@ -593,7 +595,7 @@ const mem0Provider: BaseProvider = {
 			}
 
 			const memories = parseListResults(raw);
-			if (memories.length === 0) break;
+			if (memories.length === 0) return true;
 
 			for (const mem of memories) {
 				if (!UUID_REGEX.test(mem.id)) continue;
@@ -605,11 +607,10 @@ const mem0Provider: BaseProvider = {
 					// Ignore delete errors during cleanup
 				}
 			}
-
-			if (memories.length < pageSize) break;
 		}
 
-		return true;
+		// If we still haven't emptied the scope after many iterations, signal failure.
+		return false;
 	},
 
 	async get_capabilities(): Promise<ProviderCapabilities> {
