@@ -8,8 +8,10 @@
 		"@types/bun": "latest"
 	},
 	"scripts": {
-		"check": "biome check .",
-		"typecheck": "tsc --noEmit",
+		"check": "biome check src providers types index.ts tests",
+		"check:all": "biome check .",
+		"typecheck": "tsc --noEmit -p tsconfig.core.json",
+		"typecheck:all": "tsc --noEmit",
 		"test": "bun test"
 	},
 	"peerDependencies": {
