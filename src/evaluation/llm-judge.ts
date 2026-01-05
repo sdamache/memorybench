@@ -11,11 +11,11 @@
  * @see specs/006-benchmark-interface/data-driven-benchmark-design.md
  */
 
-import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
 import { createOpenAI } from "@ai-sdk/openai";
+import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import { generateText } from "ai";
 import type {
 	EvaluationContext,
@@ -47,7 +47,10 @@ const DEFAULT_GOOGLE_VERTEX_LOCATION = "us-central1";
  * Lazily initialized clients/providers (keyed by config)
  */
 const anthropicVertexClients = new Map<string, AnthropicVertex>();
-const googleVertexProviders = new Map<string, ReturnType<typeof createVertex>>();
+const googleVertexProviders = new Map<
+	string,
+	ReturnType<typeof createVertex>
+>();
 
 /**
  * Normalize Anthropic model IDs for Vertex AI.
@@ -59,23 +62,63 @@ function normalizeAnthropicVertexModelId(modelId: string): string {
 	return modelId.replace(/-\d{8}$/, "");
 }
 
-function resolveBackend(config: LLMJudgeConfig): NonNullable<LLMJudgeConfig["backend"]> {
-	const env = process.env.MEMORYBENCH_JUDGE_BACKEND ?? process.env.LLM_JUDGE_BACKEND;
+function createAzureApiVersionFetch(apiVersion: string): typeof fetch {
+	const wrapped = ((
+		input: Parameters<typeof fetch>[0],
+		init?: Parameters<typeof fetch>[1],
+	) => {
+		const urlString =
+			typeof input === "string"
+				? input
+				: input instanceof URL
+					? input.toString()
+					: input.url;
+		const urlObj = new URL(urlString);
+		urlObj.searchParams.set("api-version", apiVersion);
+		return fetch(urlObj, init);
+	}) as typeof fetch;
+
+	return Object.assign(wrapped, {
+		preconnect: fetch.preconnect.bind(fetch),
+	});
+}
+
+function resolveBackend(
+	config: LLMJudgeConfig,
+): NonNullable<LLMJudgeConfig["backend"]> {
+	const env =
+		process.env.MEMORYBENCH_JUDGE_BACKEND ?? process.env.LLM_JUDGE_BACKEND;
 	const backend = env ?? config.backend ?? "anthropic-vertex";
 
 	// Runtime validation: ensure backend is valid
-	const validBackends = ["anthropic-vertex", "google-vertex", "openai", "azure-openai", "anthropic", "google"] as const;
-	if (!validBackends.includes(backend as any)) {
+	const validBackends = [
+		"anthropic-vertex",
+		"google-vertex",
+		"openai",
+		"azure-openai",
+		"anthropic",
+		"google",
+	] as const satisfies readonly NonNullable<LLMJudgeConfig["backend"]>[];
+
+	type JudgeBackend = (typeof validBackends)[number];
+	const isJudgeBackend = (value: string): value is JudgeBackend =>
+		(validBackends as readonly string[]).includes(value);
+
+	if (!isJudgeBackend(backend)) {
 		throw new Error(
-			`Invalid judge backend: "${backend}". Valid options: ${validBackends.join(", ")}`
+			`Invalid judge backend: "${backend}". Valid options: ${validBackends.join(", ")}`,
 		);
 	}
 
-	return backend as NonNullable<LLMJudgeConfig["backend"]>;
+	return backend;
 }
 
-function resolveModel(config: LLMJudgeConfig, backend: NonNullable<LLMJudgeConfig["backend"]>): string {
-	const env = process.env.MEMORYBENCH_JUDGE_MODEL ?? process.env.LLM_JUDGE_MODEL;
+function resolveModel(
+	config: LLMJudgeConfig,
+	backend: NonNullable<LLMJudgeConfig["backend"]>,
+): string {
+	const env =
+		process.env.MEMORYBENCH_JUDGE_MODEL ?? process.env.LLM_JUDGE_MODEL;
 	if (env) return env;
 	if (config.model) return config.model;
 	switch (backend) {
@@ -89,7 +132,7 @@ function resolveModel(config: LLMJudgeConfig, backend: NonNullable<LLMJudgeConfi
 			// Azure OpenAI uses deployment names, not model names
 			// User must specify via config.model or MEMORYBENCH_JUDGE_MODEL
 			throw new Error(
-				"azure-openai backend requires explicit deployment name via config.model or MEMORYBENCH_JUDGE_MODEL env var"
+				"azure-openai backend requires explicit deployment name via config.model or MEMORYBENCH_JUDGE_MODEL env var",
 			);
 		case "anthropic":
 			return "claude-sonnet-4-20250514";
@@ -97,7 +140,9 @@ function resolveModel(config: LLMJudgeConfig, backend: NonNullable<LLMJudgeConfi
 			return "gemini-1.5-flash";
 		default:
 			// Exhaustive check - should never reach here due to resolveBackend validation
-			throw new Error(`Unhandled backend in resolveModel: ${backend satisfies never}`);
+			throw new Error(
+				`Unhandled backend in resolveModel: ${backend satisfies never}`,
+			);
 	}
 }
 
@@ -140,7 +185,9 @@ function getAnthropicVertexClient(config: LLMJudgeConfig): AnthropicVertex {
 	return created;
 }
 
-function getGoogleVertexProvider(config: LLMJudgeConfig): ReturnType<typeof createVertex> {
+function getGoogleVertexProvider(
+	config: LLMJudgeConfig,
+): ReturnType<typeof createVertex> {
 	const location = resolveRegion(config, DEFAULT_GOOGLE_VERTEX_LOCATION);
 	const project = resolveProjectId(config);
 	if (!project) {
@@ -177,7 +224,8 @@ function parseJudgeResponse(content: string): EvaluationResult {
 			faithfulness: Math.max(0, Math.min(1, Number(parsed.faithfulness) || 0)),
 			reasoning: String(parsed.reasoning || "No reasoning provided"),
 			typeSpecificScore:
-				parsed.typeSpecificScore !== undefined && parsed.typeSpecificScore !== null
+				parsed.typeSpecificScore !== undefined &&
+				parsed.typeSpecificScore !== null
 					? Math.max(0, Math.min(1, Number(parsed.typeSpecificScore)))
 					: undefined,
 		};
@@ -271,7 +319,9 @@ Return ONLY valid JSON (no markdown, no code fences).`;
  * });
  * ```
  */
-export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol {
+export function createLLMJudge(
+	config: LLMJudgeConfig = {},
+): EvaluationProtocol {
 	return {
 		name: "llm-as-judge",
 
@@ -297,7 +347,9 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 							messages: [{ role: "user", content: prompt }],
 						});
 
-						const textContent = response.content.find((block) => block.type === "text");
+						const textContent = response.content.find(
+							(block) => block.type === "text",
+						);
 						if (!textContent || textContent.type !== "text") {
 							return {
 								correctness: 0,
@@ -333,7 +385,9 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 					case "openai": {
 						const apiKey = process.env.OPENAI_API_KEY;
 						if (!apiKey) {
-							throw new Error("OPENAI_API_KEY is required for judge backend 'openai'");
+							throw new Error(
+								"OPENAI_API_KEY is required for judge backend 'openai'",
+							);
 						}
 
 						const openai = createOpenAI({ apiKey });
@@ -358,26 +412,22 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 					case "azure-openai": {
 						const apiKey = process.env.AZURE_OPENAI_API_KEY;
 						const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-						const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
+						const apiVersion =
+							process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
 						if (!apiKey || !endpoint) {
 							throw new Error(
-								"AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for judge backend 'azure-openai'"
+								"AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for judge backend 'azure-openai'",
 							);
 						}
 
 						// Azure OpenAI uses deployment names, not model IDs
-						const deploymentName = model;
-						const azureOpenAI = createOpenAI({
-							apiKey,
-							baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
-							headers: { "api-key": apiKey },
-							fetch: (url, init) => {
-								// Append api-version query param to all requests
-								const urlObj = new URL(url);
-								urlObj.searchParams.set("api-version", apiVersion);
-								return fetch(urlObj.toString(), init);
-							},
-						});
+							const deploymentName = model;
+							const azureOpenAI = createOpenAI({
+								apiKey,
+								baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
+								headers: { "api-key": apiKey },
+								fetch: createAzureApiVersionFetch(apiVersion),
+							});
 
 						const { text } = await generateText({
 							model: azureOpenAI(deploymentName),
@@ -427,7 +477,9 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 					case "google": {
 						const apiKey = process.env.GOOGLE_API_KEY;
 						if (!apiKey) {
-							throw new Error("GOOGLE_API_KEY is required for judge backend 'google'");
+							throw new Error(
+								"GOOGLE_API_KEY is required for judge backend 'google'",
+							);
 						}
 
 						const google = createGoogleGenerativeAI({ apiKey });
@@ -451,7 +503,9 @@ export function createLLMJudge(config: LLMJudgeConfig = {}): EvaluationProtocol 
 
 					default:
 						// Exhaustive check - should never reach here due to resolveBackend validation
-						throw new Error(`Unhandled backend in evaluate: ${backend satisfies never}`);
+						throw new Error(
+							`Unhandled backend in evaluate: ${backend satisfies never}`,
+						);
 				}
 			} catch (error) {
 				return {
@@ -528,7 +582,9 @@ export async function generateAnswerFromContext(
 	// Create config with answer-specific overrides
 	const answerConfig: LLMJudgeConfig = {
 		...config,
-		backend: answerBackendEnv ? (answerBackendEnv as LLMJudgeConfig["backend"]) : config.backend,
+		backend: answerBackendEnv
+			? (answerBackendEnv as LLMJudgeConfig["backend"])
+			: config.backend,
 		model: answerModelEnv || config.model,
 	};
 
@@ -559,7 +615,9 @@ ANSWER:`;
 					prompt,
 					maxOutputTokens: 1024,
 				});
-				return text || "I don't have enough information to answer this question.";
+				return (
+					text || "I don't have enough information to answer this question."
+				);
 			}
 
 			case "openai": {
@@ -573,7 +631,9 @@ ANSWER:`;
 					prompt,
 					maxOutputTokens: 1024,
 				});
-				return text || "I don't have enough information to answer this question.";
+				return (
+					text || "I don't have enough information to answer this question."
+				);
 			}
 
 			case "azure-openai": {
@@ -581,32 +641,33 @@ ANSWER:`;
 				const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
 				const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
 				if (!apiKey || !endpoint) {
-					throw new Error("AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for answer generation");
+					throw new Error(
+						"AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT are required for answer generation",
+					);
 				}
 				const deploymentName = model;
-				const azureOpenAI = createOpenAI({
-					apiKey,
-					baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
-					headers: { "api-key": apiKey },
-					fetch: (url, init) => {
-						// Append api-version query param to all requests
-						const urlObj = new URL(url);
-						urlObj.searchParams.set("api-version", apiVersion);
-						return fetch(urlObj.toString(), init);
-					},
-				});
+					const azureOpenAI = createOpenAI({
+						apiKey,
+						baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
+						headers: { "api-key": apiKey },
+						fetch: createAzureApiVersionFetch(apiVersion),
+					});
 				const { text } = await generateText({
 					model: azureOpenAI(deploymentName),
 					prompt,
 					maxOutputTokens: 1024,
 				});
-				return text || "I don't have enough information to answer this question.";
+				return (
+					text || "I don't have enough information to answer this question."
+				);
 			}
 
 			case "anthropic": {
 				const apiKey = process.env.ANTHROPIC_API_KEY;
 				if (!apiKey) {
-					throw new Error("ANTHROPIC_API_KEY is required for answer generation");
+					throw new Error(
+						"ANTHROPIC_API_KEY is required for answer generation",
+					);
 				}
 				const anthropic = createAnthropic({ apiKey });
 				const { text } = await generateText({
@@ -614,7 +675,9 @@ ANSWER:`;
 					prompt,
 					maxOutputTokens: 1024,
 				});
-				return text || "I don't have enough information to answer this question.";
+				return (
+					text || "I don't have enough information to answer this question."
+				);
 			}
 
 			case "google": {
@@ -628,7 +691,9 @@ ANSWER:`;
 					prompt,
 					maxOutputTokens: 1024,
 				});
-				return text || "I don't have enough information to answer this question.";
+				return (
+					text || "I don't have enough information to answer this question."
+				);
 			}
 
 			case "anthropic-vertex": {
@@ -639,7 +704,9 @@ ANSWER:`;
 					max_tokens: 1024,
 					messages: [{ role: "user", content: prompt }],
 				});
-				const textContent = response.content.find((block) => block.type === "text");
+				const textContent = response.content.find(
+					(block) => block.type === "text",
+				);
 				if (!textContent || textContent.type !== "text") {
 					return "I don't have enough information to answer this question.";
 				}
@@ -648,7 +715,9 @@ ANSWER:`;
 
 			default:
 				// Exhaustive check - should never reach here due to resolveBackend validation
-				throw new Error(`Unhandled backend in generateAnswerFromContext: ${backend satisfies never}`);
+				throw new Error(
+					`Unhandled backend in generateAnswerFromContext: ${backend satisfies never}`,
+				);
 		}
 	} catch (error) {
 		console.error("Answer generation error:", error);

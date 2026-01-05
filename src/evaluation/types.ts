@@ -61,7 +61,13 @@ export interface LLMJudgeConfig {
 	 * - `anthropic`: Anthropic API
 	 * - `google`: Google Gemini API (Generative Language API)
 	 */
-	backend?: "anthropic-vertex" | "google-vertex" | "openai" | "azure-openai" | "anthropic" | "google";
+	backend?:
+		| "anthropic-vertex"
+		| "google-vertex"
+		| "openai"
+		| "azure-openai"
+		| "anthropic"
+		| "google";
 	/** Model to use for evaluation */
 	model?: string;
 	/** Google Cloud region for Vertex AI */

@@ -27,7 +27,10 @@ const DEFAULT_CONFIG: Required<ExactMatchConfig> = {
 /**
  * Normalize a string based on configuration
  */
-function normalizeString(str: string, config: Required<ExactMatchConfig>): string {
+function normalizeString(
+	str: string,
+	config: Required<ExactMatchConfig>,
+): string {
 	let result = str;
 
 	if (config.trim) {
@@ -149,7 +152,10 @@ export function createExactMatch(
 					break;
 				}
 				// Partial credit for partial matches
-				const ctxSimilarity = calculateSimilarity(normalizedCtx, normalizedExpected);
+				const ctxSimilarity = calculateSimilarity(
+					normalizedCtx,
+					normalizedExpected,
+				);
 				if (ctxSimilarity > faithfulness) {
 					faithfulness = ctxSimilarity;
 				}
