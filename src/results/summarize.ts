@@ -7,18 +7,18 @@
  * @module src/results/summarize
  */
 
-import type {
-	ResultRecord,
-	MetricsSummary,
-	StatusCounts,
-	CombinationSummary,
-} from "./schema";
 import type { CasePerformanceMetrics } from "../metrics/performance";
 import {
-	calculateTimingStats,
-	aggregateTokenStats,
 	aggregateRunPerformance,
+	aggregateTokenStats,
+	calculateTimingStats,
 } from "../metrics/performance";
+import type {
+	CombinationSummary,
+	MetricsSummary,
+	ResultRecord,
+	StatusCounts,
+} from "./schema";
 
 // =============================================================================
 // Helper Functions
@@ -184,10 +184,7 @@ export function buildMetricsSummary(
 		const scoreAverages = calculateScoreAverages(comboResults);
 
 		// Sum duration
-		const durationMs = comboResults.reduce(
-			(sum, r) => sum + r.duration_ms,
-			0,
-		);
+		const durationMs = comboResults.reduce((sum, r) => sum + r.duration_ms, 0);
 
 		// Extract performance metrics for this combination
 		const comboPerformanceMetrics: CasePerformanceMetrics[] = [];

@@ -7,20 +7,20 @@
  * @module src/results/writer
  */
 
-import { join } from "node:path";
-import { rename, appendFile } from "node:fs/promises";
-import { platform, release, arch } from "node:os";
 import { createHash } from "node:crypto";
+import { appendFile, rename } from "node:fs/promises";
+import { arch, platform, release } from "node:os";
+import { join } from "node:path";
+import type { RunPlan, RunSelection } from "../runner/types";
 import type {
+	BenchmarkInfo,
+	EnvironmentInfo,
+	MetricsSummary,
+	ProviderInfo,
+	ResultRecord,
 	ResultsWriter,
 	RunManifest,
-	ResultRecord,
-	MetricsSummary,
-	EnvironmentInfo,
-	ProviderInfo,
-	BenchmarkInfo,
 } from "./schema";
-import type { RunSelection, RunPlan } from "../runner/types";
 
 // =============================================================================
 // Path Management
@@ -193,7 +193,9 @@ export function computeManifestHash(manifest: unknown): string {
  * @param runDir - Directory containing results.jsonl
  * @returns Array of result records, or empty array if file doesn't exist
  */
-export async function readExistingResults(runDir: string): Promise<ResultRecord[]> {
+export async function readExistingResults(
+	runDir: string,
+): Promise<ResultRecord[]> {
 	const resultsPath = join(runDir, "results.jsonl");
 
 	try {
@@ -205,9 +207,12 @@ export async function readExistingResults(runDir: string): Promise<ResultRecord[
 		}
 
 		const content = await file.text();
-		const lines = content.trim().split("\n").filter(line => line.length > 0);
+		const lines = content
+			.trim()
+			.split("\n")
+			.filter((line) => line.length > 0);
 
-		return lines.map(line => JSON.parse(line) as ResultRecord);
+		return lines.map((line) => JSON.parse(line) as ResultRecord);
 	} catch (error) {
 		console.warn(`Failed to read existing results from ${resultsPath}:`, error);
 		return [];
@@ -260,7 +265,7 @@ class ResultsWriterImpl implements ResultsWriter {
 	async appendResult(result: ResultRecord): Promise<void> {
 		// Serialize append operations to prevent interleaving (concurrent write safety)
 		this.appendQueue = this.appendQueue.then(async () => {
-			const line = JSON.stringify(result) + "\n";
+			const line = `${JSON.stringify(result)}\n`;
 
 			// Use Node.js appendFile for atomic line-level appends
 			// This handles concurrent writes safely at the OS level

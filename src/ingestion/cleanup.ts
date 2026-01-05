@@ -101,7 +101,10 @@ export async function resetScope(
 	provider: BaseProvider,
 	scope: ScopeContext,
 ): Promise<boolean> {
-	if (!(await hasCapability(provider, "reset_scope")) || !provider.reset_scope) {
+	if (
+		!(await hasCapability(provider, "reset_scope")) ||
+		!provider.reset_scope
+	) {
 		return false;
 	}
 

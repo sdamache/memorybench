@@ -128,7 +128,9 @@ export function calculateRetrievalMetrics(
 
 	// Calculate F1 score
 	const f1 =
-		precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+		precision + recall > 0
+			? (2 * precision * recall) / (precision + recall)
+			: 0;
 
 	// Calculate score statistics
 	const scores = retrievalResults.map((r) => r.score);
@@ -247,9 +249,11 @@ export function ndcgAtK(
 	let dcg = 0;
 	const seenRelevant = new Set<string>();
 	for (let i = 0; i < retrievedIds.length; i++) {
-		const id = retrievedIds[i]!;
+		const id = retrievedIds[i];
+		if (!id) continue;
 		// Only count as relevant if it's in relevantIds AND we haven't seen it yet
-		const isRelevant = relevantIds.includes(id) && !seenRelevant.has(id) ? 1 : 0;
+		const isRelevant =
+			relevantIds.includes(id) && !seenRelevant.has(id) ? 1 : 0;
 		if (isRelevant) {
 			seenRelevant.add(id);
 		}
@@ -287,7 +291,8 @@ export function averagePrecision(
 	const seenRelevant = new Set<string>();
 
 	for (let i = 0; i < retrievedIds.length; i++) {
-		const id = retrievedIds[i]!;
+		const id = retrievedIds[i];
+		if (!id) continue;
 		// Only count as relevant if it's in relevantIds AND we haven't seen it yet
 		if (relevantIds.includes(id) && !seenRelevant.has(id)) {
 			seenRelevant.add(id);

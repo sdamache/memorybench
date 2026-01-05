@@ -26,7 +26,7 @@ const fullScope: ScopeContext = {
 
 // Test 2: Working with MemoryRecords
 const memory: MemoryRecord = {
-	id: "mem_" + crypto.randomUUID(),
+	id: `mem_${crypto.randomUUID()}`,
 	context: "User prefers dark mode for all interfaces",
 	metadata: {
 		category: "preference",

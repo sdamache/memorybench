@@ -287,7 +287,7 @@ export function formatValidationError(error: ManifestValidationError): string {
 		if (fieldError.received) {
 			parts.push(fieldError.received);
 		}
-		lines.push(parts.join(" ") + ".");
+		lines.push(`${parts.join(" ")}.`);
 	}
 
 	return lines.join("\n");
@@ -393,7 +393,7 @@ export async function loadAllProviders(
 						{
 							field: "provider",
 							rule: "duplicate_provider",
-							expected: `Unique name+version combination`,
+							expected: "Unique name+version combination",
 							received: `Provider "${key}" already registered from ${existingPath}`,
 						},
 					],
@@ -675,9 +675,13 @@ export function validateRequiredMethods(
 ): string[] {
 	const requiredMethods = ["add_memory", "retrieve_memory", "delete_memory"];
 	const missing: string[] = [];
+	const adapterRecord: Record<string, unknown> = adapter as unknown as Record<
+		string,
+		unknown
+	>;
 
 	for (const method of requiredMethods) {
-		if (typeof (adapter as any)[method] !== "function") {
+		if (typeof adapterRecord[method] !== "function") {
 			missing.push(method);
 		}
 	}
@@ -785,11 +789,11 @@ export class ProviderRegistry {
 	static async getInstance(
 		baseDir: string = process.cwd(),
 	): Promise<ProviderRegistry> {
-		if (!this.instance) {
-			this.instance = new ProviderRegistry();
-			await this.instance.initialize(baseDir);
+		if (!ProviderRegistry.instance) {
+			ProviderRegistry.instance = new ProviderRegistry();
+			await ProviderRegistry.instance.initialize(baseDir);
 		}
-		return this.instance;
+		return ProviderRegistry.instance;
 	}
 
 	/**
@@ -798,7 +802,7 @@ export class ProviderRegistry {
 	 * (T028)
 	 */
 	static reset(): void {
-		this.instance = null;
+		ProviderRegistry.instance = null;
 	}
 
 	/**

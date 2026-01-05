@@ -102,17 +102,20 @@ export async function discoverBenchmarks(
 		if (!pathsByDir.has(dir)) {
 			pathsByDir.set(dir, []);
 		}
-		pathsByDir.get(dir)!.push(filePath);
+		pathsByDir.get(dir)?.push(filePath);
 	}
 
 	const deduplicatedPaths: string[] = [];
 	for (const paths of pathsByDir.values()) {
 		if (paths.length === 1) {
-			deduplicatedPaths.push(paths[0]!);
+			const only = paths[0];
+			if (only) deduplicatedPaths.push(only);
 		} else {
 			// Prefer manifest.json over index.ts
 			const manifestPath = paths.find((p) => p.endsWith("manifest.json"));
-			deduplicatedPaths.push(manifestPath ?? paths[0]!);
+			const fallback = paths[0];
+			const chosen = manifestPath ?? fallback;
+			if (chosen) deduplicatedPaths.push(chosen);
 		}
 	}
 
@@ -139,10 +142,9 @@ export async function loadBenchmark(
 	try {
 		// Check if this is a manifest-based benchmark
 		if (filePath.endsWith("manifest.json")) {
-			const {
-				loadBenchmarkManifest,
-				createDataDrivenBenchmark,
-			} = await import("./data-driven-benchmark");
+			const { loadBenchmarkManifest, createDataDrivenBenchmark } = await import(
+				"./data-driven-benchmark"
+			);
 
 			const manifest = await loadBenchmarkManifest(filePath);
 			const benchmark = await createDataDrivenBenchmark(manifest, filePath);
