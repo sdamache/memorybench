@@ -421,13 +421,13 @@ export function createLLMJudge(
 						}
 
 						// Azure OpenAI uses deployment names, not model IDs
-							const deploymentName = model;
-							const azureOpenAI = createOpenAI({
-								apiKey,
-								baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
-								headers: { "api-key": apiKey },
-								fetch: createAzureApiVersionFetch(apiVersion),
-							});
+						const deploymentName = model;
+						const azureOpenAI = createOpenAI({
+							apiKey,
+							baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
+							headers: { "api-key": apiKey },
+							fetch: createAzureApiVersionFetch(apiVersion),
+						});
 
 						const { text } = await generateText({
 							model: azureOpenAI(deploymentName),
@@ -646,12 +646,12 @@ ANSWER:`;
 					);
 				}
 				const deploymentName = model;
-					const azureOpenAI = createOpenAI({
-						apiKey,
-						baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
-						headers: { "api-key": apiKey },
-						fetch: createAzureApiVersionFetch(apiVersion),
-					});
+				const azureOpenAI = createOpenAI({
+					apiKey,
+					baseURL: `${endpoint}/openai/deployments/${deploymentName}`,
+					headers: { "api-key": apiKey },
+					fetch: createAzureApiVersionFetch(apiVersion),
+				});
 				const { text } = await generateText({
 					model: azureOpenAI(deploymentName),
 					prompt,

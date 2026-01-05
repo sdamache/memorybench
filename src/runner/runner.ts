@@ -254,22 +254,22 @@ export async function executeCases(
 			})
 		: limitedCases;
 
-		if (concurrency === 1) {
-			// Sequential execution for concurrency=1
-			const results: RunCaseResult[] = [];
-			let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
+	if (concurrency === 1) {
+		// Sequential execution for concurrency=1
+		const results: RunCaseResult[] = [];
+		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
 
-			const totalCasesToRun = casesToRun.length;
-			for (let i = 0; i < casesToRun.length; i++) {
-				const benchmarkCase = casesToRun[i];
-				if (!benchmarkCase) {
-					continue;
-				}
-				const result = await executeCase(
-					providerName,
-					benchmarkName,
-					benchmarkCase.id,
-					runId,
+		const totalCasesToRun = casesToRun.length;
+		for (let i = 0; i < casesToRun.length; i++) {
+			const benchmarkCase = casesToRun[i];
+			if (!benchmarkCase) {
+				continue;
+			}
+			const result = await executeCase(
+				providerName,
+				benchmarkName,
+				benchmarkCase.id,
+				runId,
 			);
 			results.push(result);
 

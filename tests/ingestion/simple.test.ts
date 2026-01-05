@@ -145,24 +145,24 @@ describe("createSimpleIngestion", () => {
 			isArray: true,
 		});
 
-			let callCount = 0;
-			const errorProvider: BaseProvider = {
-				name: "error-provider",
-				async add_memory(_scope, _content, metadata) {
-					callCount++;
-					if (callCount === 2) {
-						throw new Error("Simulated failure");
-					}
-					return {
-						id: `id_${callCount}`,
-						context: "",
-						timestamp: Date.now(),
-						metadata: metadata ?? {},
-					};
-				},
-				async retrieve_memory() {
-					return [];
-				},
+		let callCount = 0;
+		const errorProvider: BaseProvider = {
+			name: "error-provider",
+			async add_memory(_scope, _content, metadata) {
+				callCount++;
+				if (callCount === 2) {
+					throw new Error("Simulated failure");
+				}
+				return {
+					id: `id_${callCount}`,
+					context: "",
+					timestamp: Date.now(),
+					metadata: metadata ?? {},
+				};
+			},
+			async retrieve_memory() {
+				return [];
+			},
 			async delete_memory() {
 				return true;
 			},
