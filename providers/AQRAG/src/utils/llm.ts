@@ -11,13 +11,11 @@ export async function generateEmbeddings(
 	inputs: string | string[],
 ): Promise<number[][]> {
 	try {
-		if (typeof inputs === "string") {
-			inputs = [inputs];
-		}
+		const values = typeof inputs === "string" ? [inputs] : inputs;
 
 		const { embeddings } = await embedMany({
 			model: google.textEmbeddingModel("gemini-embedding-001"),
-			values: inputs,
+			values,
 			providerOptions: {
 				google: {
 					outputDimensionality: EMBEDDING_DIMENSION,

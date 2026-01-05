@@ -9,7 +9,7 @@ export async function initDatabase() {
 	try {
 		// Read and execute schema
 		// TODO: Fixed path resolution - use import.meta.dir to resolve relative to module, not CWD
-		const schemaFile = Bun.file(import.meta.dir + "/../schema.sql");
+		const schemaFile = Bun.file(`${import.meta.dir}/../schema.sql`);
 		const schema = await schemaFile.text();
 
 		// Split by statements and execute each one
@@ -94,7 +94,7 @@ export async function findSimilarWeighted(
 	embedding: number[],
 	// if questionWeight is 1, only search chunks
 	// if questionWeight is 0, only search questions
-	questionWeight = 1.0,
+	questionWeight: number,
 	limit: number,
 ): Promise<WeightedSearchResult[]> {
 	const chunkWeight = 1 - questionWeight;

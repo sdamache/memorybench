@@ -38,7 +38,12 @@ const processChunk = async (chunk: string, document: Document) => {
 
 	const embedding = await generateEmbeddings(object.enhancedChunk);
 
-	await insertChunk(document.id, object.enhancedChunk, embedding[0]!);
+	const [chunkEmbedding] = embedding;
+	if (!chunkEmbedding) {
+		throw new Error("Failed to generate embedding for enhanced chunk");
+	}
+
+	await insertChunk(document.id, object.enhancedChunk, chunkEmbedding);
 
 	return object.enhancedChunk;
 };

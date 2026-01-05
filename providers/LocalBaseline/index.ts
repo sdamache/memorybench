@@ -1,3 +1,4 @@
+import { avgDocLength, bm25Score, tokenize } from "../../src/utils/bm25";
 import type {
 	MemoryRecord,
 	ProviderCapabilities,
@@ -5,7 +6,6 @@ import type {
 	ScopeContext,
 } from "../../types/core";
 import type { BaseProvider } from "../../types/provider";
-import { tokenize, bm25Score, avgDocLength } from "../../src/utils/bm25";
 
 // In-memory storage for LocalBaseline provider
 const memories = new Map<string, MemoryRecord>();

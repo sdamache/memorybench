@@ -49,11 +49,20 @@ const processChunk = async (chunk: string, document: Document) => {
 	]);
 	const embedding = await generateEmbeddings(object.enhancedChunk);
 
+	const [chunkEmbedding] = embedding;
+	if (!chunkEmbedding) {
+		throw new Error("Failed to generate embedding for enhanced chunk");
+	}
+	const [questionEmbedding] = anticipatoryQuestionsEmbeddings;
+	if (!questionEmbedding) {
+		throw new Error("Failed to generate embedding for anticipatory questions");
+	}
+
 	await insertChunk(
 		document.id,
 		object.enhancedChunk,
-		embedding[0]!,
-		anticipatoryQuestionsEmbeddings[0]!,
+		chunkEmbedding,
+		questionEmbedding,
 	);
 
 	return object.enhancedChunk;
