@@ -64,8 +64,11 @@ export async function cleanupIngested(
 	// Try to use reset_scope if available (more efficient)
 	if ((await hasCapability(provider, "reset_scope")) && provider.reset_scope) {
 		try {
-			await provider.reset_scope(scope);
-			return { deletedCount: ingestedIds.length, errors: [] };
+			const ok = await provider.reset_scope(scope);
+			if (ok) {
+				return { deletedCount: ingestedIds.length, errors: [] };
+			}
+			errors.push("reset_scope returned false");
 		} catch (error) {
 			errors.push(
 				`reset_scope failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -78,8 +81,12 @@ export async function cleanupIngested(
 	// delete_memory is a required BaseProvider method, so we can call it directly
 	for (const id of ingestedIds) {
 		try {
-			await provider.delete_memory(scope, id);
-			deletedCount++;
+			const ok = await provider.delete_memory(scope, id);
+			if (ok) {
+				deletedCount++;
+			} else {
+				errors.push(`Failed to delete ${id}: provider returned false`);
+			}
 		} catch (error) {
 			errors.push(
 				`Failed to delete ${id}: ${error instanceof Error ? error.message : String(error)}`,
@@ -109,8 +116,7 @@ export async function resetScope(
 	}
 
 	try {
-		await provider.reset_scope(scope);
-		return true;
+		return await provider.reset_scope(scope);
 	} catch {
 		return false;
 	}
