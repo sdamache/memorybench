@@ -195,7 +195,9 @@ async function fetchMemoryDetailsForIds(params: {
 }): Promise<Map<string, Record<string, unknown>>> {
 	const apiKey = params.apiKey;
 	const uniqueIds = Array.from(
-		new Set(params.ids.filter((id) => typeof id === "string" && UUID_REGEX.test(id))),
+		new Set(
+			params.ids.filter((id) => typeof id === "string" && UUID_REGEX.test(id)),
+		),
 	);
 
 	const metadataById = new Map<string, Record<string, unknown>>();
@@ -244,9 +246,9 @@ async function fetchMemoryDetailsForIds(params: {
 					const raw = (await resp.json()) as unknown;
 					if (!isRecord(raw)) break;
 
-					const detail = raw as GetMemoryResponse;
-					if (isRecord(detail.metadata)) {
-						metadataById.set(id, detail.metadata);
+					const metadataValue = raw.metadata;
+					if (isRecord(metadataValue)) {
+						metadataById.set(id, metadataValue);
 					}
 					break;
 				} catch {
@@ -545,7 +547,9 @@ const mem0Provider: BaseProvider = {
 		}
 
 		return response.map((result) => {
-			const searchMeta = isRecord(result.metadata) ? result.metadata : undefined;
+			const searchMeta = isRecord(result.metadata)
+				? result.metadata
+				: undefined;
 			const backfilledMeta = metadataById.get(result.id);
 			const meta = normalizeSessionMetadata({
 				...(backfilledMeta ?? {}),
