@@ -106,8 +106,47 @@ interface ListMemoryResult {
 	metadata?: Record<string, unknown>;
 }
 
+interface GetMemoryResponse {
+	id: string;
+	memory?: string;
+	user_id?: string;
+	agent_id?: string | null;
+	app_id?: string | null;
+	run_id?: string | null;
+	hash?: string;
+	metadata?: Record<string, unknown>;
+	created_at?: string;
+	updated_at?: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
+}
+
+function getSessionIdFromMetadata(
+	metadata: Record<string, unknown> | undefined,
+): string | null {
+	if (!metadata) return null;
+
+	const candidate =
+		metadata._sessionId ?? metadata.sessionId ?? metadata.session_id ?? null;
+
+	return typeof candidate === "string" && candidate.length > 0
+		? candidate
+		: null;
+}
+
+function normalizeSessionMetadata(
+	metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	if (!metadata) return {};
+
+	const normalized = { ...metadata };
+	const sessionId = getSessionIdFromMetadata(normalized);
+	if (sessionId && typeof normalized._sessionId !== "string") {
+		normalized._sessionId = sessionId;
+	}
+	return normalized;
 }
 
 function parseSearchResults(raw: unknown): SearchResult[] {
@@ -148,6 +187,83 @@ function parseSearchResults(raw: unknown): SearchResult[] {
 	}
 
 	return results;
+}
+
+async function fetchMemoryDetailsForIds(params: {
+	apiKey: string;
+	ids: readonly string[];
+}): Promise<Map<string, Record<string, unknown>>> {
+	const apiKey = params.apiKey;
+	const uniqueIds = Array.from(
+		new Set(params.ids.filter((id) => typeof id === "string" && UUID_REGEX.test(id))),
+	);
+
+	const metadataById = new Map<string, Record<string, unknown>>();
+	if (uniqueIds.length === 0) return metadataById;
+
+	const maxAttempts = 5;
+	const baseDelayMs = 200;
+	const concurrency = 6;
+
+	let index = 0;
+	const worker = async () => {
+		while (true) {
+			const currentIndex = index;
+			index++;
+			const id = uniqueIds[currentIndex];
+			if (!id) return;
+
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				try {
+					const resp = await fetch(
+						`${API_BASE_URL}/v1/memories/${encodeURIComponent(id)}/`,
+						{
+							headers: {
+								Authorization: `Token ${apiKey}`,
+								Accept: "application/json",
+							},
+						},
+					);
+
+					if (resp.status === 404) {
+						// Rare but can happen due to eventual consistency between search and read APIs.
+						// Retry briefly before giving up.
+						if (attempt < maxAttempts - 1) {
+							await new Promise((resolve) =>
+								setTimeout(resolve, baseDelayMs * (attempt + 1)),
+							);
+							continue;
+						}
+						break;
+					}
+
+					if (!resp.ok) {
+						break;
+					}
+
+					const raw = (await resp.json()) as unknown;
+					if (!isRecord(raw)) break;
+
+					const detail = raw as GetMemoryResponse;
+					if (isRecord(detail.metadata)) {
+						metadataById.set(id, detail.metadata);
+					}
+					break;
+				} catch {
+					if (attempt < maxAttempts - 1) {
+						await new Promise((resolve) =>
+							setTimeout(resolve, baseDelayMs * (attempt + 1)),
+						);
+					}
+				}
+			}
+		}
+	};
+
+	const workerCount = Math.min(concurrency, uniqueIds.length);
+	await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+	return metadataById;
 }
 
 function parseListResults(raw: unknown): ListMemoryResult[] {
@@ -207,6 +323,7 @@ async function fetchMetadataForIds(params: {
 			body: JSON.stringify({
 				filters: { user_id: userId },
 				version: "v2",
+				fields: ["id", "metadata"],
 				page,
 				page_size: pageSize,
 			}),
@@ -277,6 +394,7 @@ async function fetchIdsPresentInList(params: {
 			body: JSON.stringify({
 				filters: { user_id: userId },
 				version: "v2",
+				fields: ["id"],
 				page,
 				page_size: pageSize,
 			}),
@@ -337,13 +455,18 @@ const mem0Provider: BaseProvider = {
 	): Promise<MemoryRecord> {
 		const scopedUserId = getScopedUserId(scope);
 
+		const sessionId = getSessionIdFromMetadata(metadata);
+
 		const response = await apiRequest<AddMemoryResponse[]>("/v1/memories/", {
 			method: "POST",
 			body: JSON.stringify({
 				user_id: scopedUserId,
 				messages: [{ role: "user", content }],
+				version: "v2",
+				async_mode: true,
 				metadata: {
 					...metadata,
+					...(sessionId ? { sessionId } : {}),
 					scope_user_id: scope.user_id,
 					scope_run_id: scope.run_id,
 					scope_session_id: scope.session_id,
@@ -378,28 +501,56 @@ const mem0Provider: BaseProvider = {
 				},
 				version: "v2",
 				top_k: limit,
+				fields: [
+					"id",
+					"memory",
+					"user_id",
+					"metadata",
+					"created_at",
+					"updated_at",
+					"categories",
+				],
 			}),
 		});
 
 		const response = parseSearchResults(raw);
 
-		// Some Mem0 search output formats omit metadata. If so, backfill metadata
-		// for the retrieved IDs via the list API so retrieval metrics can still
-		// map results to benchmark session IDs.
-		const needsMetadataBackfill = response.some((r) => !isRecord(r.metadata));
-		const metadataById = needsMetadataBackfill
-			? await fetchMetadataForIds({
-					apiKey: getApiKey(),
-					userId: scopedUserId,
-					ids: response.map((r) => r.id),
-				})
-			: new Map<string, Record<string, unknown>>();
+		const idsNeedingMetadata = response
+			.filter(
+				(r) => !isRecord(r.metadata) || !getSessionIdFromMetadata(r.metadata),
+			)
+			.map((r) => r.id);
+
+		// Some Mem0 search output formats omit metadata. To make retrieval metrics robust,
+		// hydrate metadata for retrieved IDs using the dedicated "Get a memory" endpoint,
+		// then fall back to the list API only if needed.
+		const apiKey = getApiKey();
+		const metadataById =
+			idsNeedingMetadata.length > 0
+				? await fetchMemoryDetailsForIds({ apiKey, ids: idsNeedingMetadata })
+				: new Map<string, Record<string, unknown>>();
+
+		const remaining = idsNeedingMetadata.filter((id) => !metadataById.has(id));
+		if (remaining.length > 0) {
+			const fallback = await fetchMetadataForIds({
+				apiKey,
+				userId: scopedUserId,
+				ids: remaining,
+			});
+			for (const [id, meta] of fallback) {
+				if (!metadataById.has(id)) {
+					metadataById.set(id, meta);
+				}
+			}
+		}
 
 		return response.map((result) => {
-			const meta =
-				(isRecord(result.metadata)
-					? result.metadata
-					: metadataById.get(result.id)) ?? {};
+			const searchMeta = isRecord(result.metadata) ? result.metadata : undefined;
+			const backfilledMeta = metadataById.get(result.id);
+			const meta = normalizeSessionMetadata({
+				...(backfilledMeta ?? {}),
+				...(searchMeta ?? {}),
+			});
 
 			return {
 				record: {
@@ -488,17 +639,16 @@ const mem0Provider: BaseProvider = {
 	): Promise<boolean> {
 		// Mem0 requires valid UUIDs for deletion - skip if not a UUID
 		if (!UUID_REGEX.test(memory_id)) {
-			// Not a valid UUID, skip deletion silently
-			return true;
+			return false;
 		}
 		try {
-			await apiRequest(`/v1/memories/${encodeURIComponent(memory_id)}`, {
+			// Use trailing slash to avoid redirect (some servers convert DELETE -> GET on 301/302).
+			await apiRequest(`/v1/memories/${encodeURIComponent(memory_id)}/`, {
 				method: "DELETE",
 			});
 			return true;
 		} catch {
-			// Silently handle delete errors for cleanup
-			return true;
+			return false;
 		}
 	},
 
@@ -600,7 +750,8 @@ const mem0Provider: BaseProvider = {
 			for (const mem of memories) {
 				if (!UUID_REGEX.test(mem.id)) continue;
 				try {
-					await apiRequest(`/v1/memories/${encodeURIComponent(mem.id)}`, {
+					// Use trailing slash to avoid redirect (some servers convert DELETE -> GET on 301/302).
+					await apiRequest(`/v1/memories/${encodeURIComponent(mem.id)}/`, {
 						method: "DELETE",
 					});
 				} catch {
