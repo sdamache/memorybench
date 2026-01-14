@@ -78,9 +78,17 @@ function createAzureApiVersionFetch(apiVersion: string): typeof fetch {
 		return fetch(urlObj, init);
 	}) as typeof fetch;
 
-	return Object.assign(wrapped, {
-		preconnect: fetch.preconnect.bind(fetch),
-	});
+	const maybePreconnect = (
+		fetch as typeof fetch & { preconnect?: (...args: unknown[]) => unknown }
+	).preconnect;
+
+	if (typeof maybePreconnect === "function") {
+		return Object.assign(wrapped, {
+			preconnect: maybePreconnect.bind(fetch),
+		}) as typeof fetch;
+	}
+
+	return wrapped;
 }
 
 function resolveBackend(
