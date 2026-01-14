@@ -102,7 +102,9 @@ const ragBenchmark: Benchmark = {
 						);
 					}
 				} else {
-					await new Promise((resolve) => setTimeout(resolve, convergenceWaitMs));
+					await new Promise((resolve) =>
+						setTimeout(resolve, convergenceWaitMs),
+					);
 				}
 			}
 
@@ -117,8 +119,14 @@ const ragBenchmark: Benchmark = {
 			const relevantCount = results.filter((result) => {
 				// Simple heuristic: check if result contains key terms from expected answer
 				const contextLower = result.record.context.toLowerCase();
+
+				// Preserve the old behavior (exact expected string present), which matters for
+				// short expected answers like acronyms ("USA") or numeric answers ("5").
+				if (contextLower.includes(expectedLower)) return true;
+
 				return expectedLower
-					.split(" ")
+					.split(/\s+/)
+					.filter(Boolean)
 					.some((term) => term.length > 3 && contextLower.includes(term));
 			}).length;
 
