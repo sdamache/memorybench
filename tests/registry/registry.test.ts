@@ -24,7 +24,7 @@ describe("ProviderRegistry - Singleton and Initialization", () => {
 
 	test("getInstance() creates singleton instance", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const instance1 = await Registry.getInstance(fixturesDir);
 		const instance2 = await Registry.getInstance(fixturesDir);
@@ -35,7 +35,7 @@ describe("ProviderRegistry - Singleton and Initialization", () => {
 
 	test("reset() clears singleton instance", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const instance1 = await Registry.getInstance(fixturesDir);
 		Registry.reset();
@@ -47,7 +47,7 @@ describe("ProviderRegistry - Singleton and Initialization", () => {
 
 	test("initialize() eagerly loads providers from fixtures", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const providers = registry.listProviders();
@@ -65,7 +65,7 @@ describe("ProviderRegistry - Provider Lookup (T021)", () => {
 
 	test("getProvider() returns provider by name", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const provider = registry.getProvider("valid-minimal");
@@ -76,7 +76,7 @@ describe("ProviderRegistry - Provider Lookup (T021)", () => {
 
 	test("getProvider() returns undefined for non-existent provider", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const provider = registry.getProvider("non-existent-provider");
@@ -86,7 +86,7 @@ describe("ProviderRegistry - Provider Lookup (T021)", () => {
 
 	test("getProvider() returns LoadedProviderEntry with adapter, manifest, and path", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const entry = registry.getProvider("valid-minimal");
@@ -104,7 +104,7 @@ describe("ProviderRegistry - Provider Lookup (T021)", () => {
 
 	test("listProviders() returns all loaded providers", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const providers = registry.listProviders();
@@ -122,7 +122,7 @@ describe("ProviderRegistry - Provider Lookup (T021)", () => {
 
 	test("listProviders() returns providers with names matching manifests", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const providers = registry.listProviders();
@@ -148,7 +148,7 @@ describe("ProviderRegistry - Multi-Provider Loading (T022)", () => {
 
 	test("loads multiple providers with different capabilities", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 
@@ -171,7 +171,7 @@ describe("ProviderRegistry - Multi-Provider Loading (T022)", () => {
 
 	test("can call add_memory on any loaded provider with same interface", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const providers = registry.listProviders();
@@ -200,7 +200,7 @@ describe("ProviderRegistry - Multi-Provider Loading (T022)", () => {
 
 	test("can call retrieve_memory on any loaded provider with same interface", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const providers = registry.listProviders();
@@ -235,7 +235,7 @@ describe("ProviderRegistry - Multi-Provider Loading (T022)", () => {
 
 	test("provider-agnostic iteration pattern works", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 
@@ -270,7 +270,7 @@ describe("ProviderRegistry - Error Handling (T032)", () => {
 
 	test("load-partial behavior: loads valid providers despite invalid ones", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 		const providers = registry.listProviders();
@@ -296,7 +296,7 @@ describe("ProviderRegistry - Error Handling (T032)", () => {
 
 	test("missing manifest skipped with warning", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		// Logs will contain warning for missing-manifest
 		const registry = await Registry.getInstance(fixturesDir);
@@ -308,7 +308,7 @@ describe("ProviderRegistry - Error Handling (T032)", () => {
 
 	test("missing adapter skipped with error", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		// Logs will contain error for missing-adapter
 		const registry = await Registry.getInstance(fixturesDir);
@@ -320,7 +320,7 @@ describe("ProviderRegistry - Error Handling (T032)", () => {
 
 	test("name mismatch skipped with error", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 
@@ -333,7 +333,7 @@ describe("ProviderRegistry - Error Handling (T032)", () => {
 
 	test("duplicate provider names handled correctly", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 
@@ -361,7 +361,7 @@ describe("ProviderRegistry - Capability Validation (T041)", () => {
 
 	test("providers with declared optional operations must have those methods", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 
@@ -377,7 +377,7 @@ describe("ProviderRegistry - Capability Validation (T041)", () => {
 
 	test("providers load successfully when capabilities match implementation", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 
@@ -394,7 +394,7 @@ describe("ProviderRegistry - Capability Validation (T041)", () => {
 
 	test("legacy providers auto-wrapped maintain manifest capabilities", async () => {
 		const Registry = await getRegistry();
-		const fixturesDir = process.cwd() + "/tests/registry/fixtures";
+		const fixturesDir = `${process.cwd()}/tests/registry/fixtures`;
 
 		const registry = await Registry.getInstance(fixturesDir);
 

@@ -16,7 +16,9 @@ describe("LoCoMo manifest", () => {
 	});
 
 	test("manifest.json is valid according to schema", async () => {
-		const manifest = await loadBenchmarkManifest("benchmarks/LoCoMo/manifest.json");
+		const manifest = await loadBenchmarkManifest(
+			"benchmarks/LoCoMo/manifest.json",
+		);
 
 		expect(manifest.manifest_version).toBe("1");
 		expect(manifest.name).toBe("LoCoMo");
@@ -24,7 +26,9 @@ describe("LoCoMo manifest", () => {
 	});
 
 	test("manifest has LoCoMo-specific flatten config", async () => {
-		const manifest = await loadBenchmarkManifest("benchmarks/LoCoMo/manifest.json");
+		const manifest = await loadBenchmarkManifest(
+			"benchmarks/LoCoMo/manifest.json",
+		);
 		expect(manifest.flatten).toBeDefined();
 		expect(manifest.flatten?.field).toBe("qa");
 		expect(manifest.flatten?.max_items).toBe(5);
@@ -32,7 +36,9 @@ describe("LoCoMo manifest", () => {
 	});
 
 	test("manifest has correct ingestion config for dynamic sessions", async () => {
-		const manifest = await loadBenchmarkManifest("benchmarks/LoCoMo/manifest.json");
+		const manifest = await loadBenchmarkManifest(
+			"benchmarks/LoCoMo/manifest.json",
+		);
 
 		expect(manifest.ingestion.strategy).toBe("session-based");
 		if (manifest.ingestion.strategy === "session-based") {
@@ -47,7 +53,9 @@ describe("LoCoMo manifest", () => {
 	});
 
 	test("manifest declares retrieval metrics including rank/coverage", async () => {
-		const manifest = await loadBenchmarkManifest("benchmarks/LoCoMo/manifest.json");
+		const manifest = await loadBenchmarkManifest(
+			"benchmarks/LoCoMo/manifest.json",
+		);
 
 		expect(manifest.metrics).toContain("retrieval_precision");
 		expect(manifest.metrics).toContain("retrieval_recall");
@@ -75,4 +83,3 @@ describe("LoCoMo type instructions", () => {
 		}
 	});
 });
-

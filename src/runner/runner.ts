@@ -7,39 +7,39 @@
  * @module src/runner/runner
  */
 
-import type { ScopeContext } from "../../types/core";
 import type { CaseResult } from "../../types/benchmark";
+import type { ScopeContext } from "../../types/core";
 import { BenchmarkRegistry } from "../loaders/benchmarks";
 import { ProviderRegistry } from "../loaders/providers";
-import { buildRunPlan } from "./gating";
-import { timed } from "./timing";
 import {
-	checkpointManager,
-	generateRunId,
-	buildCaseKey,
-	listAvailableRuns,
-} from "./checkpoint";
-import { retryExecutor } from "./retry";
-import type {
-	RunSelection,
-	RunPlan,
-	RunCaseResult,
-	RunOutput,
-	RunSummary,
-	OperationTiming,
-	Checkpoint,
-} from "./types";
-import {
-	createResultsWriter,
+	type BenchmarkInfo,
+	type ProviderInfo,
+	type ResultRecord,
+	type ResultsWriter,
+	buildMetricsSummary,
 	buildRunManifest,
 	computeManifestHash,
-	buildMetricsSummary,
+	createResultsWriter,
 	readExistingResults,
-	type ProviderInfo,
-	type BenchmarkInfo,
-	type ResultsWriter,
-	type ResultRecord,
 } from "../results";
+import {
+	buildCaseKey,
+	checkpointManager,
+	generateRunId,
+	listAvailableRuns,
+} from "./checkpoint";
+import { buildRunPlan } from "./gating";
+import { retryExecutor } from "./retry";
+import { timed } from "./timing";
+import type {
+	Checkpoint,
+	OperationTiming,
+	RunCaseResult,
+	RunOutput,
+	RunPlan,
+	RunSelection,
+	RunSummary,
+} from "./types";
 
 // =============================================================================
 // Scope Context Creation
@@ -142,29 +142,34 @@ export async function executeCase(
 			duration_ms,
 			error: result.error,
 			artifacts: result.artifacts,
-			retry_history: retryResult.retry_history.length > 0 ? retryResult.retry_history : undefined,
-		};
-	} else {
-		// Failed after retries
-		const classifiedError = retryResult.error;
-		const errorMessage = classifiedError.http_status
-			? `[${classifiedError.category}] HTTP ${classifiedError.http_status}: ${classifiedError.original.message}`
-			: `[${classifiedError.category}] ${classifiedError.original.message}`;
-
-		return {
-			provider_name: providerName,
-			benchmark_name: benchmarkName,
-			case_id: caseId,
-			status: "error",
-			scores: {},
-			duration_ms,
-			error: {
-				message: errorMessage,
-				stack: classifiedError.original.stack,
-			},
-			retry_history: retryResult.retry_history.length > 0 ? retryResult.retry_history : undefined,
+			retry_history:
+				retryResult.retry_history.length > 0
+					? retryResult.retry_history
+					: undefined,
 		};
 	}
+	// Failed after retries
+	const classifiedError = retryResult.error;
+	const errorMessage = classifiedError.http_status
+		? `[${classifiedError.category}] HTTP ${classifiedError.http_status}: ${classifiedError.original.message}`
+		: `[${classifiedError.category}] ${classifiedError.original.message}`;
+
+	return {
+		provider_name: providerName,
+		benchmark_name: benchmarkName,
+		case_id: caseId,
+		status: "error",
+		scores: {},
+		duration_ms,
+		error: {
+			message: errorMessage,
+			stack: classifiedError.original.stack,
+		},
+		retry_history:
+			retryResult.retry_history.length > 0
+				? retryResult.retry_history
+				: undefined,
+	};
 }
 
 /**
@@ -186,7 +191,7 @@ async function createConcurrencyPool<T, R>(
 	// Process items in batches of size `concurrency`
 	for (let i = 0; i < items.length; i += concurrency) {
 		const batch = items.slice(i, i + concurrency);
-		const batchPromises = batch.map(item => fn(item));
+		const batchPromises = batch.map((item) => fn(item));
 		const batchResults = await Promise.allSettled(batchPromises);
 
 		// Extract results or throw on rejection
@@ -220,7 +225,7 @@ export async function executeCases(
 	providerName: string,
 	benchmarkName: string,
 	runId: string,
-	concurrency: number = 1,
+	concurrency = 1,
 	caseLimit?: number,
 	checkpoint?: Checkpoint | null,
 	writer?: ResultsWriter,
@@ -240,9 +245,13 @@ export async function executeCases(
 	// Filter out already-completed cases (for resume functionality)
 	const casesToRun = checkpoint
 		? limitedCases.filter((benchmarkCase) => {
-				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
+				const caseKey = buildCaseKey(
+					providerName,
+					benchmarkName,
+					benchmarkCase.id,
+				);
 				return !(caseKey in checkpoint.completed);
-		  })
+			})
 		: limitedCases;
 
 	if (concurrency === 1) {
@@ -253,6 +262,9 @@ export async function executeCases(
 		const totalCasesToRun = casesToRun.length;
 		for (let i = 0; i < casesToRun.length; i++) {
 			const benchmarkCase = casesToRun[i];
+			if (!benchmarkCase) {
+				continue;
+			}
 			const result = await executeCase(
 				providerName,
 				benchmarkName,
@@ -272,7 +284,11 @@ export async function executeCases(
 
 			// Record checkpoint after each case
 			if (currentCheckpoint) {
-				const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
+				const caseKey = buildCaseKey(
+					providerName,
+					benchmarkName,
+					benchmarkCase.id,
+				);
 				currentCheckpoint = await checkpointManager.recordCompletion(
 					currentCheckpoint,
 					caseKey,
@@ -281,54 +297,57 @@ export async function executeCases(
 			}
 		}
 		return { results, checkpoint: currentCheckpoint };
-	} else {
-		// Concurrent execution using concurrency pool
-		// Append results immediately after each case completes for durability
-		const results = await createConcurrencyPool(
-			casesToRun,
-			concurrency,
-			async (benchmarkCase) => {
-				const result = await executeCase(
+	}
+	// Concurrent execution using concurrency pool
+	// Append results immediately after each case completes for durability
+	const results = await createConcurrencyPool(
+		casesToRun,
+		concurrency,
+		async (benchmarkCase) => {
+			const result = await executeCase(
+				providerName,
+				benchmarkName,
+				benchmarkCase.id,
+				runId,
+			);
+
+			// Append result immediately to JSONL file (durability during concurrent execution)
+			if (writer) {
+				const resultRecord: ResultRecord = {
+					run_id: runId,
+					...result,
+				};
+				await writer.appendResult(resultRecord);
+			}
+
+			return result;
+		},
+	);
+
+	// Record checkpoints after batch completes
+	// (Checkpoints are less critical for durability than results)
+	let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
+	if (checkpoint) {
+		for (let i = 0; i < results.length; i++) {
+			const result = results[i];
+			const benchmarkCase = casesToRun[i];
+
+			if (result && benchmarkCase && currentCheckpoint) {
+				const caseKey = buildCaseKey(
 					providerName,
 					benchmarkName,
 					benchmarkCase.id,
-					runId,
 				);
-
-				// Append result immediately to JSONL file (durability during concurrent execution)
-				if (writer) {
-					const resultRecord: ResultRecord = {
-						run_id: runId,
-						...result,
-					};
-					await writer.appendResult(resultRecord);
-				}
-
-				return result;
-			},
-		);
-
-		// Record checkpoints after batch completes
-		// (Checkpoints are less critical for durability than results)
-		let currentCheckpoint: Checkpoint | null = checkpoint ?? null;
-		if (checkpoint) {
-			for (let i = 0; i < results.length; i++) {
-				const result = results[i];
-				const benchmarkCase = casesToRun[i];
-
-				if (result && benchmarkCase && currentCheckpoint) {
-					const caseKey = buildCaseKey(providerName, benchmarkName, benchmarkCase.id);
-					currentCheckpoint = await checkpointManager.recordCompletion(
-						currentCheckpoint,
-						caseKey,
-						result.status,
-					);
-				}
+				currentCheckpoint = await checkpointManager.recordCompletion(
+					currentCheckpoint,
+					caseKey,
+					result.status,
+				);
 			}
 		}
-
-		return { results, checkpoint: currentCheckpoint };
 	}
+
+	return { results, checkpoint: currentCheckpoint };
 }
 
 // =============================================================================
@@ -475,15 +494,16 @@ export async function executeRunPlan(
 	// Execute only eligible entries
 	for (const entry of eligibleEntries) {
 		try {
-			const { results: caseResults, checkpoint: updatedCheckpoint } = await executeCases(
-				entry.provider_name,
-				entry.benchmark_name,
-				plan.run_id,
-				selection.concurrency,
-				selection.case_limit,
-				checkpoint,
-				writer,
-			);
+			const { results: caseResults, checkpoint: updatedCheckpoint } =
+				await executeCases(
+					entry.provider_name,
+					entry.benchmark_name,
+					plan.run_id,
+					selection.concurrency,
+					selection.case_limit,
+					checkpoint,
+					writer,
+				);
 			allResults.push(...caseResults);
 			// Update checkpoint for next iteration
 			checkpoint = updatedCheckpoint;
@@ -572,17 +592,16 @@ export async function resumeRun(
 
 	if (loadResult.status === "not_found") {
 		const availableRuns = await listAvailableRuns();
-		const availableList = availableRuns.length > 0
-			? `\nAvailable runs: ${availableRuns.slice(0, 5).join(", ")}`
-			: "\nNo available runs found in runs/ directory.";
+		const availableList =
+			availableRuns.length > 0
+				? `\nAvailable runs: ${availableRuns.slice(0, 5).join(", ")}`
+				: "\nNo available runs found in runs/ directory.";
 		throw new Error(`Run '${runId}' not found.${availableList}`);
 	}
 
 	if (loadResult.status === "invalid") {
 		throw new Error(
-			`Checkpoint corrupted: ${loadResult.error}\n\nOptions:\n` +
-			`  1. Delete runs/${runId}/ and start fresh\n` +
-			`  2. Manually fix checkpoint.json`,
+			`Checkpoint corrupted: ${loadResult.error}\n\nOptions:\n  1. Delete runs/${runId}/ and start fresh\n  2. Manually fix checkpoint.json`,
 		);
 	}
 
@@ -596,26 +615,39 @@ export async function resumeRun(
 	}
 
 	// Validate selections match
-	const validation = checkpointManager.validateSelections(checkpoint, selection);
+	const validation = checkpointManager.validateSelections(
+		checkpoint,
+		selection,
+	);
 	if (!validation.valid) {
 		const messages: string[] = ["Selection mismatch with checkpoint:"];
 
 		if (validation.missing_providers.length > 0) {
-			messages.push(`  Missing providers: ${validation.missing_providers.join(", ")}`);
+			messages.push(
+				`  Missing providers: ${validation.missing_providers.join(", ")}`,
+			);
 		}
 		if (validation.extra_providers.length > 0) {
-			messages.push(`  Extra providers: ${validation.extra_providers.join(", ")}`);
+			messages.push(
+				`  Extra providers: ${validation.extra_providers.join(", ")}`,
+			);
 		}
 		if (validation.missing_benchmarks.length > 0) {
-			messages.push(`  Missing benchmarks: ${validation.missing_benchmarks.join(", ")}`);
+			messages.push(
+				`  Missing benchmarks: ${validation.missing_benchmarks.join(", ")}`,
+			);
 		}
 		if (validation.extra_benchmarks.length > 0) {
-			messages.push(`  Extra benchmarks: ${validation.extra_benchmarks.join(", ")}`);
+			messages.push(
+				`  Extra benchmarks: ${validation.extra_benchmarks.join(", ")}`,
+			);
 		}
 
-		messages.push(`\nOriginal run used:`);
+		messages.push("\nOriginal run used:");
 		messages.push(`  Providers: ${checkpoint.selections.providers.join(", ")}`);
-		messages.push(`  Benchmarks: ${checkpoint.selections.benchmarks.join(", ")}`);
+		messages.push(
+			`  Benchmarks: ${checkpoint.selections.benchmarks.join(", ")}`,
+		);
 
 		throw new Error(messages.join("\n"));
 	}

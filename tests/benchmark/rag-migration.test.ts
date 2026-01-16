@@ -35,24 +35,28 @@ describe("RAG benchmark migration", () => {
 
 		const ragEntry = registry.get("RAG-template-benchmark");
 		expect(ragEntry).toBeDefined();
+		if (!ragEntry) throw new Error("Expected RAG benchmark entry to exist");
 
-		const cases = Array.from(ragEntry!.benchmark.cases());
+		const cases = Array.from(ragEntry.benchmark.cases());
 
 		expect(cases.length).toBe(3); // ragBenchmarkData has 3 items
-		expect(cases[0]!.id).toBe("rag_001");
-		expect(cases[1]!.id).toBe("rag_002");
-		expect(cases[2]!.id).toBe("rag_003");
+		expect(cases[0]?.id).toBe("rag_001");
+		expect(cases[1]?.id).toBe("rag_002");
+		expect(cases[2]?.id).toBe("rag_003");
 
 		// Verify case structure
-		expect(cases[0]!).toHaveProperty("id");
-		expect(cases[0]!).toHaveProperty("description");
-		expect(cases[0]!).toHaveProperty("input");
-		expect(cases[0]!).toHaveProperty("expected");
-		expect(cases[0]!).toHaveProperty("metadata");
+		const firstCase = cases[0];
+		expect(firstCase).toBeDefined();
+		if (!firstCase) throw new Error("Expected at least one RAG test case");
+		expect(firstCase).toHaveProperty("id");
+		expect(firstCase).toHaveProperty("description");
+		expect(firstCase).toHaveProperty("input");
+		expect(firstCase).toHaveProperty("expected");
+		expect(firstCase).toHaveProperty("metadata");
 
 		// Verify metadata mapping
-		expect(cases[0]!.metadata?.difficulty).toBe("easy");
-		expect(cases[0]!.metadata?.category).toBe("geography");
+		expect(cases[0]?.metadata?.difficulty).toBe("easy");
+		expect(cases[0]?.metadata?.category).toBe("geography");
 	});
 
 	test("RAG benchmark run_case() executes and returns CaseResult", async () => {
@@ -63,9 +67,12 @@ describe("RAG benchmark migration", () => {
 
 		const ragEntry = registry.get("RAG-template-benchmark");
 		expect(ragEntry).toBeDefined();
+		if (!ragEntry) throw new Error("Expected RAG benchmark entry to exist");
 
-		const cases = Array.from(ragEntry!.benchmark.cases());
-		const firstCase = cases[0]!;
+		const cases = Array.from(ragEntry.benchmark.cases());
+		const firstCase = cases[0];
+		expect(firstCase).toBeDefined();
+		if (!firstCase) throw new Error("Expected at least one RAG test case");
 
 		const scope: ScopeContext = {
 			user_id: "test_user",
@@ -73,11 +80,12 @@ describe("RAG benchmark migration", () => {
 			session_id: "test_session",
 		};
 
-		const result = await ragEntry!.benchmark.run_case(
+		const result = await ragEntry.benchmark.run_case(
 			mockProvider,
 			scope,
 			firstCase,
 		);
+		expect(result).toBeDefined();
 
 		// Validate CaseResult structure
 		expect(result.case_id).toBe(firstCase.id);
@@ -122,6 +130,7 @@ describe("RAG benchmark migration", () => {
 
 		const ragEntry = registry.get("RAG-template-benchmark");
 		expect(ragEntry).toBeDefined();
+		if (!ragEntry) throw new Error("Expected RAG benchmark entry to exist");
 
 		// Create a provider that throws errors
 		const errorProvider = {
@@ -131,18 +140,22 @@ describe("RAG benchmark migration", () => {
 			},
 		};
 
-		const cases = Array.from(ragEntry!.benchmark.cases());
+		const cases = Array.from(ragEntry.benchmark.cases());
+		const firstCase = cases[0];
+		expect(firstCase).toBeDefined();
+		if (!firstCase) throw new Error("Expected at least one RAG test case");
 		const scope: ScopeContext = {
 			user_id: "test_user",
 			run_id: "test_run",
 			session_id: "test_session",
 		};
 
-		const result = await ragEntry!.benchmark.run_case(
+		const result = await ragEntry.benchmark.run_case(
 			errorProvider,
 			scope,
-			cases[0]!,
+			firstCase,
 		);
+		expect(result).toBeDefined();
 
 		expect(result.status).toBe("error");
 		expect(result.error).toBeDefined();
@@ -156,7 +169,11 @@ describe("RAG benchmark migration", () => {
 		await registry.initialize();
 
 		const ragEntry = registry.get("RAG-template-benchmark");
-		const cases = Array.from(ragEntry!.benchmark.cases());
+		if (!ragEntry) throw new Error("Expected RAG benchmark entry to exist");
+		const cases = Array.from(ragEntry.benchmark.cases());
+		const firstCase = cases[0];
+		expect(firstCase).toBeDefined();
+		if (!firstCase) throw new Error("Expected at least one RAG test case");
 
 		const scope: ScopeContext = {
 			user_id: "test_user",
@@ -164,11 +181,12 @@ describe("RAG benchmark migration", () => {
 			session_id: "test_session",
 		};
 
-		const result = await ragEntry!.benchmark.run_case(
+		const result = await ragEntry.benchmark.run_case(
 			mockProvider,
 			scope,
-			cases[0]!,
+			firstCase,
 		);
+		expect(result).toBeDefined();
 
 		// Verify duration_ms has decimal precision (millisecond level)
 		expect(result.duration_ms).toBeGreaterThan(0);

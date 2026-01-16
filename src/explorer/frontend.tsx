@@ -1,10 +1,15 @@
 /// <reference lib="dom" />
-import React, { useState, useEffect, useMemo } from "react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { ResultRecord } from "../results/schema";
 import type { ExplorerData, RunInfo } from "./types";
 
-const JUDGE_METRIC_KEYS = ["correctness", "faithfulness", "type_specific"] as const;
+const JUDGE_METRIC_KEYS = [
+	"correctness",
+	"faithfulness",
+	"type_specific",
+] as const;
 const RETRIEVAL_METRIC_KEYS = [
 	"retrieval_precision",
 	"retrieval_recall",
@@ -30,12 +35,9 @@ const METRIC_LABELS: Record<string, string> = {
 // Use a wrapper div to prevent React/Iconify DOM conflicts
 function Icon({ name, className = "" }: { name: string; className?: string }) {
 	return (
-		<span
-			className={className}
-			dangerouslySetInnerHTML={{
-				__html: `<span class="iconify" data-icon="${name}"></span>`,
-			}}
-		/>
+		<span className={className}>
+			<span className="iconify" data-icon={name} />
+		</span>
 	);
 }
 
@@ -70,6 +72,7 @@ function Header({
 
 			<div className="flex items-center gap-3">
 				<button
+					type="button"
 					onClick={onSelectRun}
 					className="group relative px-6 py-2 bg-transparent text-white border border-white/20 hover:border-accent hover:text-accent transition-colors clip-chamfer"
 				>
@@ -78,6 +81,7 @@ function Header({
 					</span>
 				</button>
 				<button
+					type="button"
 					onClick={onExport}
 					className="group relative px-6 py-2 bg-accent text-black hover:bg-white transition-colors clip-chamfer"
 				>
@@ -172,7 +176,9 @@ function MetricCard({
 				</div>
 			)}
 			{subtext && (
-				<div className={`mt-2 text-xs font-mono ${subtextColor}`}>{subtext}</div>
+				<div className={`mt-2 text-xs font-mono ${subtextColor}`}>
+					{subtext}
+				</div>
 			)}
 		</div>
 	);
@@ -191,9 +197,15 @@ function ScoreOverview({
 
 	const combinations = useMemo(() => {
 		const filtered = data.summary.by_combination.filter((combo) => {
-			if (selectedProvider !== "all" && combo.provider_name !== selectedProvider)
+			if (
+				selectedProvider !== "all" &&
+				combo.provider_name !== selectedProvider
+			)
 				return false;
-			if (selectedBenchmark !== "all" && combo.benchmark_name !== selectedBenchmark)
+			if (
+				selectedBenchmark !== "all" &&
+				combo.benchmark_name !== selectedBenchmark
+			)
 				return false;
 			return true;
 		});
@@ -206,12 +218,16 @@ function ScoreOverview({
 	}, [data.summary.by_combination, selectedBenchmark, selectedProvider]);
 
 	const metricCandidates = useMemo(() => {
-		return view === "judge" ? [...JUDGE_METRIC_KEYS] : [...RETRIEVAL_METRIC_KEYS];
+		return view === "judge"
+			? [...JUDGE_METRIC_KEYS]
+			: [...RETRIEVAL_METRIC_KEYS];
 	}, [view]);
 
 	const visibleMetrics = useMemo(() => {
 		return metricCandidates.filter((metricKey) =>
-			combinations.some((combo) => combo.score_averages[metricKey] !== undefined),
+			combinations.some(
+				(combo) => combo.score_averages[metricKey] !== undefined,
+			),
 		);
 	}, [combinations, metricCandidates]);
 
@@ -286,7 +302,9 @@ function ScoreOverview({
 										className="hover:bg-white/5 transition-colors"
 									>
 										<td className="p-4 text-gray-300">{combo.provider_name}</td>
-										<td className="p-4 text-gray-400">{combo.benchmark_name}</td>
+										<td className="p-4 text-gray-400">
+											{combo.benchmark_name}
+										</td>
 										<td className="p-4 text-right text-gray-500">
 											{combo.counts.cases.toLocaleString()}
 										</td>
@@ -459,7 +477,9 @@ function FilterSelect({
 		<div className="relative group">
 			<select
 				value={value}
-				onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
+				onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+					onChange(e.target.value)
+				}
 				className="appearance-none bg-black border border-white/20 text-xs text-gray-300 pl-3 pr-8 py-1.5 focus:border-accent outline-none uppercase tracking-wide cursor-pointer w-40"
 			>
 				{options.map((opt) => (
@@ -498,11 +518,22 @@ function getScoreBg(value: number): string {
 /**
  * Mini score dot indicator
  */
-function ScoreDot({ value, label }: { value: number | undefined; label: string }) {
+function ScoreDot({
+	value,
+	label,
+}: { value: number | undefined; label: string }) {
 	if (value === undefined) return null;
-	const color = value >= 0.8 ? "bg-emerald-400" : value >= 0.5 ? "bg-amber-400" : "bg-red-400";
+	const color =
+		value >= 0.8
+			? "bg-emerald-400"
+			: value >= 0.5
+				? "bg-amber-400"
+				: "bg-red-400";
 	return (
-		<div className="flex flex-col items-center gap-0.5" title={`${label}: ${(value * 100).toFixed(0)}%`}>
+		<div
+			className="flex flex-col items-center gap-0.5"
+			title={`${label}: ${(value * 100).toFixed(0)}%`}
+		>
 			<div className={`w-2 h-2 rounded-full ${color}`} />
 		</div>
 	);
@@ -510,13 +541,15 @@ function ScoreDot({ value, label }: { value: number | undefined; label: string }
 
 function ScoresCell({ scores }: { scores: Record<string, number> }) {
 	const entries = sortScoreEntries(scores);
-	if (entries.length === 0) return <span className="text-[10px] text-gray-600">—</span>;
+	if (entries.length === 0)
+		return <span className="text-[10px] text-gray-600">—</span>;
 
 	const correctness = scores.correctness;
 	const faithfulness = scores.faithfulness;
 
 	// Retrieval metrics
-	const hasRetrieval = scores.retrieval_precision !== undefined ||
+	const hasRetrieval =
+		scores.retrieval_precision !== undefined ||
 		scores.retrieval_recall !== undefined ||
 		scores.retrieval_f1 !== undefined;
 
@@ -530,13 +563,14 @@ function ScoresCell({ scores }: { scores: Record<string, number> }) {
 		scores.retrieval_map,
 	].filter((v): v is number => v !== undefined && Number.isFinite(v));
 
-	const avgRetrieval = retrievalScores.length > 0
-		? retrievalScores.reduce((a, b) => a + b, 0) / retrievalScores.length
-		: undefined;
+	const avgRetrieval =
+		retrievalScores.length > 0
+			? retrievalScores.reduce((a, b) => a + b, 0) / retrievalScores.length
+			: undefined;
 
 	// Build detailed tooltip
 	const tooltipLines = entries.map(
-		([key, value]) => `${key}: ${formatMetricValue(key, value, 1)}`
+		([key, value]) => `${key}: ${formatMetricValue(key, value, 1)}`,
 	);
 	const tooltip = tooltipLines.join("\n");
 
@@ -544,18 +578,30 @@ function ScoresCell({ scores }: { scores: Record<string, number> }) {
 		<div className="flex items-center justify-end gap-2" title={tooltip}>
 			{/* Primary metrics as compact badges */}
 			{correctness !== undefined && (
-				<div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(correctness)}`}>
-					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">C</span>
-					<span className={`text-xs font-semibold tabular-nums ${getScoreColor(correctness)}`}>
+				<div
+					className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(correctness)}`}
+				>
+					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+						C
+					</span>
+					<span
+						className={`text-xs font-semibold tabular-nums ${getScoreColor(correctness)}`}
+					>
 						{(correctness * 100).toFixed(0)}
 					</span>
 				</div>
 			)}
 
 			{faithfulness !== undefined && (
-				<div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(faithfulness)}`}>
-					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">F</span>
-					<span className={`text-xs font-semibold tabular-nums ${getScoreColor(faithfulness)}`}>
+				<div
+					className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(faithfulness)}`}
+				>
+					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+						F
+					</span>
+					<span
+						className={`text-xs font-semibold tabular-nums ${getScoreColor(faithfulness)}`}
+					>
 						{(faithfulness * 100).toFixed(0)}
 					</span>
 				</div>
@@ -565,9 +611,11 @@ function ScoresCell({ scores }: { scores: Record<string, number> }) {
 			{hasRetrieval && avgRetrieval !== undefined && (
 				<div
 					className={`inline-flex items-center gap-1.5 px-2 py-1 rounded ${getScoreBg(avgRetrieval)}`}
-					title={`Retrieval Avg: ${(avgRetrieval * 100).toFixed(0)}%\nP: ${scores.retrieval_precision !== undefined ? (scores.retrieval_precision * 100).toFixed(0) : '—'}%\nR: ${scores.retrieval_recall !== undefined ? (scores.retrieval_recall * 100).toFixed(0) : '—'}%\nF1: ${scores.retrieval_f1 !== undefined ? (scores.retrieval_f1 * 100).toFixed(0) : '—'}%`}
+					title={`Retrieval Avg: ${(avgRetrieval * 100).toFixed(0)}%\nP: ${scores.retrieval_precision !== undefined ? (scores.retrieval_precision * 100).toFixed(0) : "—"}%\nR: ${scores.retrieval_recall !== undefined ? (scores.retrieval_recall * 100).toFixed(0) : "—"}%\nF1: ${scores.retrieval_f1 !== undefined ? (scores.retrieval_f1 * 100).toFixed(0) : "—"}%`}
 				>
-					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">R</span>
+					<span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+						R
+					</span>
 					<div className="flex gap-0.5">
 						<ScoreDot value={scores.retrieval_precision} label="Precision" />
 						<ScoreDot value={scores.retrieval_recall} label="Recall" />
@@ -600,7 +648,13 @@ function ResultsTable({
 		return [...results].sort((a, b) => {
 			const valA = (a as unknown as Record<string, unknown>)[sortKey];
 			const valB = (b as unknown as Record<string, unknown>)[sortKey];
-			if (valA === undefined || valA === null || valB === undefined || valB === null) return 0;
+			if (
+				valA === undefined ||
+				valA === null ||
+				valB === undefined ||
+				valB === null
+			)
+				return 0;
 			if (valA < valB) return sortOrder === "asc" ? -1 : 1;
 			if (valA > valB) return sortOrder === "asc" ? 1 : -1;
 			return 0;
@@ -608,6 +662,9 @@ function ResultsTable({
 	}, [results, sortKey, sortOrder]);
 
 	useEffect(() => {
+		// Intentionally reset pagination when the dataset or page size changes.
+		void results;
+		void pageSize;
 		setPage(0);
 	}, [results, pageSize]);
 
@@ -637,20 +694,31 @@ function ResultsTable({
 		align = "left",
 	}: { field: string; label: string; align?: "left" | "right" }) => (
 		<th
-			onClick={() => handleSort(field)}
-			className={`p-4 font-bold cursor-pointer hover:text-white transition-colors ${align === "right" ? "text-right" : ""}`}
+			className={`p-4 font-bold ${align === "right" ? "text-right" : ""}`}
+			scope="col"
 		>
-			<div
-				className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}
+			<button
+				type="button"
+				onClick={() => handleSort(field)}
+				className={`w-full hover:text-white transition-colors ${
+					align === "right" ? "text-right" : "text-left"
+				}`}
+				aria-label={`Sort by ${label}`}
 			>
-				{label}
-				{sortKey === field && (
-					<Icon
-						name={sortOrder === "asc" ? "lucide:arrow-up" : "lucide:arrow-down"}
-						className="w-3 h-3"
-					/>
-				)}
-			</div>
+				<div
+					className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}
+				>
+					{label}
+					{sortKey === field && (
+						<Icon
+							name={
+								sortOrder === "asc" ? "lucide:arrow-up" : "lucide:arrow-down"
+							}
+							className="w-3 h-3"
+						/>
+					)}
+				</div>
+			</button>
 		</th>
 	);
 
@@ -679,25 +747,31 @@ function ResultsTable({
 						pageResults.map((result) => (
 							<tr
 								key={`${result.run_id}:${result.provider_name}:${result.benchmark_name}:${result.case_id}`}
-								onClick={() => onSelect(result)}
-								className="group hover:bg-white/5 transition-colors cursor-pointer"
+								className="group hover:bg-white/5 transition-colors"
 							>
 								<td className="p-4">
 									<StatusIcon status={result.status} />
 								</td>
 								<td className="p-4 text-white font-medium">{result.case_id}</td>
 								<td className="p-4 text-gray-300">{result.provider_name}</td>
-									<td className="p-4 text-gray-400">{result.benchmark_name}</td>
-									<td className="p-4 text-right text-gray-500">
-										{formatDurationLabel(result.duration_ms)}
-									</td>
-									<td className="p-4 text-right">
-										<ScoresCell scores={result.scores} />
-									</td>
-									<td className="p-4 text-center text-gray-600 group-hover:text-accent">
+								<td className="p-4 text-gray-400">{result.benchmark_name}</td>
+								<td className="p-4 text-right text-gray-500">
+									{formatDurationLabel(result.duration_ms)}
+								</td>
+								<td className="p-4 text-right">
+									<ScoresCell scores={result.scores} />
+								</td>
+								<td className="p-4 text-center">
+									<button
+										type="button"
+										onClick={() => onSelect(result)}
+										className="text-gray-600 group-hover:text-accent transition-colors"
+										aria-label="View result details"
+									>
 										<Icon name="lucide:chevron-right" />
-									</td>
-								</tr>
+									</button>
+								</td>
+							</tr>
 						))
 					)}
 				</tbody>
@@ -755,13 +829,21 @@ function ResultsTable({
 }
 
 function StatusIcon({ status }: { status: string }) {
-	const config: Record<string, { icon: string; color: string }> = {
+	const config = {
 		pass: { icon: "lucide:check-circle", color: "text-green-500" },
 		fail: { icon: "lucide:x-circle", color: "text-red-500" },
 		error: { icon: "lucide:alert-circle", color: "text-red-500" },
 		skip: { icon: "lucide:minus-circle", color: "text-yellow-500" },
-	};
-	const statusConfig = config[status] ?? config.skip!;
+	} as const;
+
+	const statusKey =
+		status === "pass" ||
+		status === "fail" ||
+		status === "error" ||
+		status === "skip"
+			? status
+			: "skip";
+	const statusConfig = config[statusKey];
 	return (
 		<div className={`flex items-center gap-2 ${statusConfig.color}`}>
 			<Icon name={statusConfig.icon} />
@@ -778,19 +860,30 @@ function Drilldown({
 		result.scores != null && Object.keys(result.scores).length > 0;
 	const scores: Record<string, number> = result.scores ?? {};
 
+	useEffect(() => {
+		const handler = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				onClose();
+			}
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [onClose]);
+
 	return (
 		<div
 			className="fixed inset-0 bg-black/70 z-50 flex justify-end animate-reveal"
-			onClick={onClose}
+			onMouseDown={onClose}
 		>
 			<div
 				className="w-full max-w-2xl bg-hex-card h-full overflow-y-auto shadow-2xl"
-				onClick={(e) => e.stopPropagation()}
+				onMouseDown={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
 				<div className="sticky top-0 bg-hex-card border-b border-white/10 p-6 flex items-center justify-between">
 					<div className="flex items-center gap-4">
 						<button
+							type="button"
 							onClick={onClose}
 							className="flex items-center gap-2 px-4 py-2 bg-hex-surface border border-white/10 hover:border-accent hover:text-accent transition-colors clip-chamfer"
 						>
@@ -841,33 +934,33 @@ function Drilldown({
 								<span className="text-xs font-bold uppercase tracking-wider text-white">
 									Scores
 								</span>
-								</div>
-								<div className="grid grid-cols-2 gap-4">
-									{sortScoreEntries(scores).map(([name, score]) => {
-										const ratioMetric = isRatioMetricValue(score);
-										return (
-											<div
-												key={name}
-												className="p-3 bg-black/30 border border-white/5"
-											>
-												<div className="text-[10px] text-gray-500 uppercase mb-1">
-													{name}
-												</div>
-												<div
-													className={`text-xl font-medium ${
-														ratioMetric
-															? score >= 0.7
-																? "text-green-400"
-																: "text-red-400"
-															: "text-white"
-													}`}
-												>
-													{formatMetricValue(name, score, 1)}
-												</div>
+							</div>
+							<div className="grid grid-cols-2 gap-4">
+								{sortScoreEntries(scores).map(([name, score]) => {
+									const ratioMetric = isRatioMetricValue(score);
+									return (
+										<div
+											key={name}
+											className="p-3 bg-black/30 border border-white/5"
+										>
+											<div className="text-[10px] text-gray-500 uppercase mb-1">
+												{name}
 											</div>
-										);
-									})}
-								</div>
+											<div
+												className={`text-xl font-medium ${
+													ratioMetric
+														? score >= 0.7
+															? "text-green-400"
+															: "text-red-400"
+														: "text-white"
+												}`}
+											>
+												{formatMetricValue(name, score, 1)}
+											</div>
+										</div>
+									);
+								})}
+							</div>
 						</div>
 					) : null}
 
@@ -910,7 +1003,7 @@ function Drilldown({
 }
 
 function StatusBadge({ status }: { status: string }) {
-	const config: Record<string, { bg: string; border: string; text: string }> = {
+	const config = {
 		pass: {
 			bg: "bg-green-500/10",
 			border: "border-green-500",
@@ -931,8 +1024,16 @@ function StatusBadge({ status }: { status: string }) {
 			border: "border-yellow-500",
 			text: "text-yellow-500",
 		},
-	};
-	const statusConfig = config[status] ?? config.skip!;
+	} as const;
+
+	const statusKey =
+		status === "pass" ||
+		status === "fail" ||
+		status === "error" ||
+		status === "skip"
+			? status
+			: "skip";
+	const statusConfig = config[statusKey];
 	return (
 		<span
 			className={`px-3 py-1 ${statusConfig.bg} border ${statusConfig.border} ${statusConfig.text} text-xs font-bold uppercase tracking-widest clip-chamfer`}
@@ -965,14 +1066,24 @@ function RunPicker({
 	onClose: () => void;
 	loading: boolean;
 }) {
+	useEffect(() => {
+		const handler = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				onClose();
+			}
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [onClose]);
+
 	return (
 		<div
 			className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center animate-reveal"
-			onClick={onClose}
+			onMouseDown={onClose}
 		>
 			<div
 				className="w-full max-w-2xl bg-hex-card max-h-[80vh] overflow-hidden shadow-2xl border border-white/10"
-				onClick={(e) => e.stopPropagation()}
+				onMouseDown={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
 				<div className="sticky top-0 bg-hex-card border-b border-white/10 p-6 flex items-center justify-between">
@@ -986,10 +1097,14 @@ function RunPicker({
 						</div>
 					</div>
 					<button
+						type="button"
 						onClick={onClose}
 						className="p-2 hover:bg-white/10 transition-colors"
 					>
-						<Icon name="lucide:x" className="w-5 h-5 text-gray-400 hover:text-white" />
+						<Icon
+							name="lucide:x"
+							className="w-5 h-5 text-gray-400 hover:text-white"
+						/>
 					</button>
 				</div>
 
@@ -997,7 +1112,10 @@ function RunPicker({
 				<div className="overflow-y-auto max-h-[60vh] p-4">
 					{loading ? (
 						<div className="flex items-center justify-center py-12">
-							<Icon name="lucide:loader-2" className="w-6 h-6 animate-spin text-accent" />
+							<Icon
+								name="lucide:loader-2"
+								className="w-6 h-6 animate-spin text-accent"
+							/>
 							<span className="ml-2 text-gray-500">Loading runs...</span>
 						</div>
 					) : runs.length === 0 ? (
@@ -1013,6 +1131,7 @@ function RunPicker({
 
 								return (
 									<button
+										type="button"
 										key={run.run_id}
 										onClick={() => !isCurrentRun && onSelect(run.run_id)}
 										disabled={isCurrentRun}
@@ -1114,7 +1233,11 @@ function formatMetricPercent(value: number, decimals: number): string {
 	return (capped * 100).toFixed(decimals);
 }
 
-function formatMetricValue(metricKey: string, value: number, decimals: number): string {
+function formatMetricValue(
+	metricKey: string,
+	value: number,
+	decimals: number,
+): string {
 	if (!Number.isFinite(value)) return "—";
 
 	// Count metrics stay as raw numbers
@@ -1135,7 +1258,9 @@ function formatMetricValue(metricKey: string, value: number, decimals: number): 
 	return value.toFixed(2);
 }
 
-function sortScoreEntries(scores: Record<string, number>): Array<[string, number]> {
+function sortScoreEntries(
+	scores: Record<string, number>,
+): Array<[string, number]> {
 	const order = [...JUDGE_METRIC_KEYS, ...RETRIEVAL_METRIC_KEYS];
 	const indexByKey = new Map<string, number>();
 	for (let i = 0; i < order.length; i += 1) {
@@ -1231,7 +1356,7 @@ export function App() {
 
 		fetch(`/api/run/${runId}`)
 			.then((res) => {
-				if (!res.ok) throw new Error(`Failed to switch run`);
+				if (!res.ok) throw new Error("Failed to switch run");
 				return res.json();
 			})
 			.then(() => {
@@ -1348,6 +1473,7 @@ export function App() {
 				<Icon name="lucide:alert-circle" className="w-12 h-12 text-red-500" />
 				<div className="text-red-400 font-mono text-sm">Error: {error}</div>
 				<button
+					type="button"
 					onClick={() => window.location.reload()}
 					className="px-6 py-2 bg-hex-surface border border-white/20 hover:border-accent text-white text-xs font-bold uppercase tracking-wider clip-chamfer"
 				>
@@ -1367,7 +1493,11 @@ export function App() {
 
 	return (
 		<>
-			<Header data={data} onSelectRun={handleOpenRunPicker} onExport={handleExport} />
+			<Header
+				data={data}
+				onSelectRun={handleOpenRunPicker}
+				onExport={handleExport}
+			/>
 			<Dashboard data={data} />
 			<ScoreOverview
 				data={data}

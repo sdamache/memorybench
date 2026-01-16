@@ -64,7 +64,10 @@ const TRANSIENT_ERROR_PATTERNS = [
  * @returns True if error has status property
  */
 function hasHttpStatus(error: Error): error is Error & { status: number } {
-	return "status" in error && typeof (error as { status: unknown }).status === "number";
+	return (
+		"status" in error &&
+		typeof (error as { status: unknown }).status === "number"
+	);
 }
 
 /**
@@ -79,7 +82,11 @@ function extractHttpStatus(error: Error): number | undefined {
 	}
 
 	// Check for nested status in response property
-	if ("response" in error && typeof error.response === "object" && error.response !== null) {
+	if (
+		"response" in error &&
+		typeof error.response === "object" &&
+		error.response !== null
+	) {
 		const response = error.response as Record<string, unknown>;
 		if (typeof response.status === "number") {
 			return response.status;
@@ -180,7 +187,7 @@ export function classifyError(error: Error): ClassifiedError {
  */
 export function calculateDelay(attempt: number, policy: RetryPolicy): number {
 	// Exponential backoff: base_delay * 2^attempt
-	const exponentialDelay = policy.base_delay_ms * Math.pow(2, attempt);
+	const exponentialDelay = policy.base_delay_ms * 2 ** attempt;
 
 	// Cap at max_delay
 	const cappedDelay = Math.min(exponentialDelay, policy.max_delay_ms);
@@ -242,15 +249,13 @@ export class RetryExecutor {
 				const delay = calculateDelay(attempt, policy);
 
 				// Record ALL failed attempts (including initial failure to capture why retry was needed)
-				if (true) {
-					retryHistory.push({
-						attempt,
-						error_type: classified.category,
-						error_message: error.message,
-						timestamp: new Date().toISOString(),
-						delay_ms: delay,
-					});
-				}
+				retryHistory.push({
+					attempt,
+					error_type: classified.category,
+					error_message: error.message,
+					timestamp: new Date().toISOString(),
+					delay_ms: delay,
+				});
 
 				// Don't retry permanent errors
 				if (!classified.should_retry) {
@@ -280,7 +285,9 @@ export class RetryExecutor {
 		// This should never be reached, but TypeScript needs it
 		return {
 			success: false,
-			error: lastError!,
+			error:
+				lastError ??
+				classifyError(new Error("Retry executor reached an unexpected state")),
 			attempts: policy.max_retries + 1,
 			retry_history: retryHistory,
 		};

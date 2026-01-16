@@ -6,14 +6,14 @@
  * @module tests/utils/bm25.test.ts
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
-	tokenize,
-	termFreq,
-	idf,
 	avgDocLength,
 	bm25Score,
+	idf,
 	rankDocuments,
+	termFreq,
+	tokenize,
 } from "../../src/utils/bm25";
 
 // =============================================================================
@@ -202,7 +202,14 @@ describe("rankDocuments", () => {
 		const ranked = rankDocuments(query, documents);
 
 		for (let i = 1; i < ranked.length; i++) {
-			expect(ranked[i - 1]!.score).toBeGreaterThanOrEqual(ranked[i]!.score);
+			const prev = ranked[i - 1]?.score;
+			const curr = ranked[i]?.score;
+			expect(prev).toBeDefined();
+			expect(curr).toBeDefined();
+			if (prev === undefined || curr === undefined) {
+				throw new Error("Expected BM25 scores to be present");
+			}
+			expect(prev).toBeGreaterThanOrEqual(curr);
 		}
 	});
 

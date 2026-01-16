@@ -14,17 +14,17 @@ import type {
 	BenchmarkCase,
 	CaseResult,
 } from "../../types/benchmark";
-import type { ScopeContext } from "../../types/core";
-import type { BaseProvider } from "../../types/provider";
 import type {
 	BenchmarkManifest,
 	EvaluationConfig,
 	IngestionConfig,
 } from "../../types/benchmark-manifest";
 import {
-	validateBenchmarkManifest,
 	formatManifestErrors,
+	validateBenchmarkManifest,
 } from "../../types/benchmark-manifest";
+import type { ScopeContext } from "../../types/core";
+import type { BaseProvider } from "../../types/provider";
 import {
 	createExactMatch,
 	createLLMJudge,
@@ -32,9 +32,9 @@ import {
 } from "../evaluation";
 import type { EvaluationProtocol } from "../evaluation/types";
 import {
-	createSimpleIngestion,
-	createSessionBasedIngestion,
 	cleanupIngested,
+	createSessionBasedIngestion,
+	createSimpleIngestion,
 } from "../ingestion";
 import type { IngestionStrategy } from "../ingestion/types";
 import {
@@ -85,7 +85,7 @@ export class ManifestLoadError extends Error {
 	constructor(
 		message: string,
 		public readonly manifestPath: string,
-		public readonly cause?: Error,
+		public override readonly cause?: unknown,
 	) {
 		super(message);
 		this.name = "ManifestLoadError";
@@ -114,7 +114,14 @@ export async function loadBenchmarkManifest(
 			);
 		}
 
-		return result.data!;
+		if (!result.data) {
+			throw new ManifestLoadError(
+				"Invalid manifest: missing data",
+				manifestPath,
+			);
+		}
+
+		return result.data;
 	} catch (error) {
 		if (error instanceof ManifestLoadError) {
 			throw error;
@@ -193,7 +200,10 @@ export function flattenData(
 			}
 
 			// Generate unique ID
-			const parentId = (parent.sample_id as string) ?? (parent.id as string) ?? `rec_${result.length}`;
+			const parentId =
+				(parent.sample_id as string) ??
+				(parent.id as string) ??
+				`rec_${result.length}`;
 
 			result.push({
 				id: `${parentId}_q${i}`,
@@ -242,7 +252,9 @@ function createIngestionStrategy(config: IngestionConfig): IngestionStrategy {
 			throw new Error("add-delete-verify strategy not yet implemented");
 
 		default:
-			throw new Error(`Unknown ingestion strategy: ${(config as IngestionConfig).strategy}`);
+			throw new Error(
+				`Unknown ingestion strategy: ${(config as IngestionConfig).strategy}`,
+			);
 	}
 }
 
@@ -284,7 +296,9 @@ async function createEvaluationProtocol(
 			throw new Error("deletion-check protocol not yet implemented");
 
 		default:
-			throw new Error(`Unknown evaluation protocol: ${(config as EvaluationConfig).protocol}`);
+			throw new Error(
+				`Unknown evaluation protocol: ${(config as EvaluationConfig).protocol}`,
+			);
 	}
 }
 
@@ -325,7 +339,8 @@ export async function createDataDrivenBenchmark(
 
 	// Create cases from data
 	const cases: BenchmarkCase[] = data.map((item, index) => {
-		const id = (item.id as string) ?? (item.question_id as string) ?? `case_${index}`;
+		const id =
+			(item.id as string) ?? (item.question_id as string) ?? `case_${index}`;
 		const question = item[manifest.query.question_field] as string;
 
 		return {
@@ -372,20 +387,24 @@ export async function createDataDrivenBenchmark(
 				ingestedIds = ingestionResult.ingestedIds;
 
 				// Phase 2: Retrieve relevant memories
-				const question = benchmarkCase.input[manifest.query.question_field] as string;
+				const question = benchmarkCase.input[
+					manifest.query.question_field
+				] as string;
 				const retrievalResults = await provider.retrieve_memory(
 					scope,
 					question,
 					manifest.query.retrieval_limit,
 				);
 
-						// Phase 3: Synthesize answer from context (only for LLM-based evaluation)
+				// Phase 3: Synthesize answer from context (only for LLM-based evaluation)
 				const retrievedContext = retrievalResults.map((r) => r.record.context);
 				let generatedAnswer: string;
 
 				if (manifest.evaluation.protocol === "llm-as-judge") {
 					// Use LLM to generate answer from retrieved context
-					const { generateAnswerFromContext } = await import("../evaluation/llm-judge");
+					const { generateAnswerFromContext } = await import(
+						"../evaluation/llm-judge"
+					);
 					const judgeConfig = {
 						backend: manifest.evaluation.judge_backend,
 						model: manifest.evaluation.model,
@@ -406,18 +425,22 @@ export async function createDataDrivenBenchmark(
 					);
 				} else {
 					// For exact-match or other protocols, just concatenate retrieved context
-					generatedAnswer = retrievedContext.length > 0
-						? `Based on retrieved memories:\n\n${retrievedContext.slice(0, 3).join("\n\n---\n\n")}`
-						: "I don't have enough information to answer this question.";
+					generatedAnswer =
+						retrievedContext.length > 0
+							? `Based on retrieved memories:\n\n${retrievedContext.slice(0, 3).join("\n\n---\n\n")}`
+							: "I don't have enough information to answer this question.";
 				}
 
 				// Phase 4: Evaluate
 				const expectedAnswer = String(benchmarkCase.expected ?? "");
-				const questionType = manifest.evaluation.protocol === "llm-as-judge" &&
+				const questionType =
+					manifest.evaluation.protocol === "llm-as-judge" &&
 					"type_field" in manifest.evaluation &&
 					manifest.evaluation.type_field
-					? (benchmarkCase.input[manifest.evaluation.type_field] as string | undefined)
-					: undefined;
+						? (benchmarkCase.input[manifest.evaluation.type_field] as
+								| string
+								| undefined)
+						: undefined;
 
 				const evalResult = await evaluationProtocol.evaluate({
 					question,
@@ -444,7 +467,8 @@ export async function createDataDrivenBenchmark(
 
 					// LoCoMo-style: evidence references that imply relevant sessions
 					if (!relevantIds && manifest.ingestion.evidence_field) {
-						const evidence = benchmarkCase.input[manifest.ingestion.evidence_field];
+						const evidence =
+							benchmarkCase.input[manifest.ingestion.evidence_field];
 						const parser = manifest.ingestion.evidence_parser ?? "direct";
 						const parsed = parseEvidenceToSessionIds(evidence, parser);
 						if (parsed.length > 0) {
@@ -459,10 +483,11 @@ export async function createDataDrivenBenchmark(
 					relevantIds = undefined;
 				}
 
-				const retrievalMetrics = relevantIds
+				const relevantIdsForMetrics = relevantIds;
+				const retrievalMetrics = relevantIdsForMetrics
 					? calculateRetrievalMetrics({
 							retrievalResults,
-							relevantIds,
+							relevantIds: relevantIdsForMetrics,
 						})
 					: null;
 				const retrievalK = Math.min(
@@ -480,7 +505,7 @@ export async function createDataDrivenBenchmark(
 					scores.type_specific = evalResult.typeSpecificScore;
 				}
 
-				if (retrievalMetrics) {
+				if (retrievalMetrics && relevantIdsForMetrics) {
 					scores.retrieval_precision = retrievalMetrics.precision;
 					scores.retrieval_recall = retrievalMetrics.recall;
 					scores.retrieval_f1 = retrievalMetrics.f1;
@@ -488,22 +513,24 @@ export async function createDataDrivenBenchmark(
 					// Additional rank/coverage metrics at K (where K = retrieval_limit)
 					scores.retrieval_coverage = coverageAtK(
 						retrievalResults,
-						relevantIds!,
+						relevantIdsForMetrics,
 						retrievalK,
 					);
 					scores.retrieval_ndcg = ndcgAtK(
 						retrievalResults,
-						relevantIds!,
+						relevantIdsForMetrics,
 						retrievalK,
 					);
 					scores.retrieval_map = averagePrecision(
 						retrievalResults.slice(0, retrievalK),
-						relevantIds!,
+						relevantIdsForMetrics,
 					);
 				}
 
 				if (evalResult.additionalMetrics) {
-					for (const [key, value] of Object.entries(evalResult.additionalMetrics)) {
+					for (const [key, value] of Object.entries(
+						evalResult.additionalMetrics,
+					)) {
 						scores[key] = value;
 					}
 				}

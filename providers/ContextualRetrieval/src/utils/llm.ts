@@ -12,15 +12,14 @@ export async function generateEmbeddings(
 	inputs: string | string[],
 ): Promise<number[][]> {
 	try {
-		if (typeof inputs === "string") {
-			inputs = [inputs];
-		}
+		const values = typeof inputs === "string" ? [inputs] : inputs;
 
 		// Get project from environment or gcloud config
-		const project = process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+		const project =
+			process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
 		if (!project) {
 			throw new Error(
-				"GOOGLE_VERTEX_PROJECT_ID or GOOGLE_CLOUD_PROJECT environment variable is required for Vertex AI"
+				"GOOGLE_VERTEX_PROJECT_ID or GOOGLE_CLOUD_PROJECT environment variable is required for Vertex AI",
 			);
 		}
 
@@ -32,7 +31,7 @@ export async function generateEmbeddings(
 
 		const { embeddings } = await embedMany({
 			model: vertexAI.textEmbeddingModel("gemini-embedding-001"),
-			values: inputs,
+			values,
 		});
 
 		return embeddings;

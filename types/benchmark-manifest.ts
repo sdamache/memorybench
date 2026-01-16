@@ -49,11 +49,17 @@ export const SessionBasedIngestionSchema = z.object({
 	/** Sample size for shared mode */
 	shared_sample_size: z.number().optional().default(10),
 	/** Content formatter */
-	content_formatter: z.enum(["conversation", "raw"]).optional().default("conversation"),
+	content_formatter: z
+		.enum(["conversation", "raw"])
+		.optional()
+		.default("conversation"),
 
 	// === Dynamic keys format options (for LoCoMo-style data) ===
 	/** Session format: "array" for arrays, "dynamic_keys" for session_1, session_2, etc. */
-	sessions_format: z.enum(["array", "dynamic_keys"]).optional().default("array"),
+	sessions_format: z
+		.enum(["array", "dynamic_keys"])
+		.optional()
+		.default("array"),
 	/** Prefix for dynamic session keys (e.g., "session_" matches session_1, session_2) */
 	session_key_prefix: z.string().optional().default("session_"),
 	/** Suffix to append to session key to find date (e.g., "_date_time" finds session_1_date_time) */
@@ -61,9 +67,15 @@ export const SessionBasedIngestionSchema = z.object({
 	/** Field containing evidence references (alternative to answer_session_ids_field) */
 	evidence_field: z.string().optional(),
 	/** How to parse evidence to session IDs: "direct" or "dialog_refs" (parses "D1:3" -> "D1") */
-	evidence_parser: z.enum(["direct", "dialog_refs"]).optional().default("direct"),
+	evidence_parser: z
+		.enum(["direct", "dialog_refs"])
+		.optional()
+		.default("direct"),
 	/** Content formatter for dynamic keys format */
-	dialogue_content_formatter: z.enum(["speaker_text", "role_content"]).optional().default("speaker_text"),
+	dialogue_content_formatter: z
+		.enum(["speaker_text", "role_content"])
+		.optional()
+		.default("speaker_text"),
 });
 
 /**
@@ -112,7 +124,14 @@ export const LLMJudgeEvaluationSchema = z.object({
 	protocol: z.literal("llm-as-judge"),
 	/** Which backend to use for the judge */
 	judge_backend: z
-		.enum(["anthropic-vertex", "google-vertex", "openai", "azure-openai", "anthropic", "google"])
+		.enum([
+			"anthropic-vertex",
+			"google-vertex",
+			"openai",
+			"azure-openai",
+			"anthropic",
+			"google",
+		])
 		.optional(),
 	/** Google Cloud project ID (for Vertex-backed judges) */
 	project_id: z.string().optional(),
@@ -235,13 +254,21 @@ export const BenchmarkManifestSchema = z.object({
 // =============================================================================
 
 export type SimpleIngestionConfig = z.infer<typeof SimpleIngestionSchema>;
-export type SessionBasedIngestionConfig = z.infer<typeof SessionBasedIngestionSchema>;
-export type AddDeleteVerifyIngestionConfig = z.infer<typeof AddDeleteVerifyIngestionSchema>;
+export type SessionBasedIngestionConfig = z.infer<
+	typeof SessionBasedIngestionSchema
+>;
+export type AddDeleteVerifyIngestionConfig = z.infer<
+	typeof AddDeleteVerifyIngestionSchema
+>;
 export type IngestionConfig = z.infer<typeof IngestionConfigSchema>;
 
-export type ExactMatchEvaluationConfig = z.infer<typeof ExactMatchEvaluationSchema>;
+export type ExactMatchEvaluationConfig = z.infer<
+	typeof ExactMatchEvaluationSchema
+>;
 export type LLMJudgeEvaluationConfig = z.infer<typeof LLMJudgeEvaluationSchema>;
-export type DeletionCheckEvaluationConfig = z.infer<typeof DeletionCheckEvaluationSchema>;
+export type DeletionCheckEvaluationConfig = z.infer<
+	typeof DeletionCheckEvaluationSchema
+>;
 export type EvaluationConfig = z.infer<typeof EvaluationConfigSchema>;
 
 export type QueryConfig = z.infer<typeof QueryConfigSchema>;
@@ -296,9 +323,7 @@ export function validateBenchmarkManifest(
 export function formatManifestErrors(
 	errors: Array<{ path: string; message: string }>,
 ): string {
-	return errors
-		.map((err) => `  - ${err.path}: ${err.message}`)
-		.join("\n");
+	return errors.map((err) => `  - ${err.path}: ${err.message}`).join("\n");
 }
 
 // =============================================================================

@@ -30,7 +30,7 @@ function createMockProvider(): BaseProvider & { addedRecords: MemoryRecord[] } {
 				id: `record_${++idCounter}`,
 				context: content,
 				timestamp: Date.now(),
-				metadata,
+				metadata: metadata ?? {},
 			};
 			addedRecords.push(record);
 			return record;
@@ -100,7 +100,18 @@ describe("createSessionBasedIngestion", () => {
 			scope,
 			input: {
 				sessions: createMockSessions(10),
-				session_ids: ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"],
+				session_ids: [
+					"s1",
+					"s2",
+					"s3",
+					"s4",
+					"s5",
+					"s6",
+					"s7",
+					"s8",
+					"s9",
+					"s10",
+				],
 				answer_ids: ["s3", "s7"], // Only these should be ingested
 			},
 		};
@@ -154,10 +165,12 @@ describe("createSessionBasedIngestion", () => {
 			provider,
 			scope,
 			input: {
-				sessions: [[
-					{ role: "user", content: "Hello" },
-					{ role: "assistant", content: "Hi there" },
-				]],
+				sessions: [
+					[
+						{ role: "user", content: "Hello" },
+						{ role: "assistant", content: "Hi there" },
+					],
+				],
 				session_ids: ["test_session"],
 				dates: ["2024-01-01"],
 			},

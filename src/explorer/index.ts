@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { loadExplorerData, listAvailableRuns } from "./export";
+import { listAvailableRuns, loadExplorerData } from "./export";
 
 /**
  * Starts the Results Explorer server.
@@ -44,7 +44,10 @@ export async function startExplorer(runId: string, port = 3000) {
 					return Response.json(data, { headers: noStoreHeaders });
 				} catch (err) {
 					const message = err instanceof Error ? err.message : "Unknown error";
-					return Response.json({ error: message }, { status: 404, headers: noStoreHeaders });
+					return Response.json(
+						{ error: message },
+						{ status: 404, headers: noStoreHeaders },
+					);
 				}
 			}
 
@@ -60,29 +63,44 @@ export async function startExplorer(runId: string, port = 3000) {
 				try {
 					await loadExplorerData(newRunId);
 					currentRunId = newRunId;
-					return Response.json({ success: true, run_id: newRunId }, { headers: noStoreHeaders });
+					return Response.json(
+						{ success: true, run_id: newRunId },
+						{ headers: noStoreHeaders },
+					);
 				} catch (err) {
 					const message = err instanceof Error ? err.message : "Unknown error";
-					return Response.json({ success: false, error: message }, { status: 404, headers: noStoreHeaders });
+					return Response.json(
+						{ success: false, error: message },
+						{ status: 404, headers: noStoreHeaders },
+					);
 				}
 			}
 
 			// Serve static assets
 			if (url.pathname === "/" || url.pathname === "/index.html") {
 				return new Response(Bun.file(join(import.meta.dir, "index.html")), {
-					headers: { "Content-Type": "text/html; charset=utf-8", ...noStoreHeaders },
+					headers: {
+						"Content-Type": "text/html; charset=utf-8",
+						...noStoreHeaders,
+					},
 				});
 			}
 
 			if (url.pathname === "/styles.css") {
 				return new Response(Bun.file(join(import.meta.dir, "styles.css")), {
-					headers: { "Content-Type": "text/css; charset=utf-8", ...noStoreHeaders },
+					headers: {
+						"Content-Type": "text/css; charset=utf-8",
+						...noStoreHeaders,
+					},
 				});
 			}
 
 			if (url.pathname === "/frontend.js") {
 				return new Response(frontendJs, {
-					headers: { "Content-Type": "text/javascript; charset=utf-8", ...noStoreHeaders },
+					headers: {
+						"Content-Type": "text/javascript; charset=utf-8",
+						...noStoreHeaders,
+					},
 				});
 			}
 

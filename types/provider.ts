@@ -19,6 +19,8 @@ import type {
 import { isScopeContext } from "./core";
 import type { ProviderManifest } from "./manifest";
 
+export type { MemoryRecord } from "./core";
+
 // =============================================================================
 // BaseProvider Interface (T001, T002) - Universal Provider Contract
 // =============================================================================

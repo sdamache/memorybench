@@ -8,7 +8,7 @@
  * @see specs/008-checkpoint-resume/data-model.md
  */
 
-import { existsSync, mkdirSync, renameSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import type { CaseStatus } from "../../types/benchmark";
 import type {
@@ -296,7 +296,8 @@ export class CheckpointManager {
 				[caseKey]: completedCase,
 			},
 			// Only increment if this is a new case (not already completed)
-		completed_count: checkpoint.completed_count + (caseKey in checkpoint.completed ? 0 : 1),
+			completed_count:
+				checkpoint.completed_count + (caseKey in checkpoint.completed ? 0 : 1),
 		};
 
 		// Write atomically

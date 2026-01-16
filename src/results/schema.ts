@@ -7,8 +7,12 @@
  * @module src/results/schema
  */
 
+import type {
+	RunPerformanceMetrics,
+	TimingStats,
+	TokenStats,
+} from "../metrics/performance";
 import type { RunCaseResult, RunSelection } from "../runner/types";
-import type { RunPerformanceMetrics, TimingStats, TokenStats } from "../metrics/performance";
 
 // =============================================================================
 // Run Manifest Types

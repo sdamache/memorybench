@@ -12,8 +12,23 @@ import type {
 } from "../../types/benchmark";
 import type { ScopeContext } from "../../types/core";
 import type { BaseProvider } from "../../types/provider";
+import { cleanupIngested } from "../../src/ingestion";
 import { ragBenchmarkData } from "./data";
 import type { RAGBenchmarkItem } from "./types";
+
+async function getConvergenceWaitMs(provider: BaseProvider): Promise<number> {
+	if (!provider.get_capabilities) {
+		return 0;
+	}
+
+	try {
+		const capabilities = await provider.get_capabilities();
+		const waitMs = capabilities?.system_flags?.convergence_wait_ms ?? 0;
+		return typeof waitMs === "number" && waitMs > 0 ? waitMs : 0;
+	} catch {
+		return 0;
+	}
+}
 
 /**
  * Convert RAGBenchmarkItem to BenchmarkCase format
@@ -57,6 +72,7 @@ const ragBenchmark: Benchmark = {
 		benchmarkCase: BenchmarkCase,
 	): Promise<CaseResult> {
 		const start = performance.now();
+		const ingestedIds: string[] = [];
 
 		try {
 			const input = benchmarkCase.input as {
@@ -66,12 +82,31 @@ const ragBenchmark: Benchmark = {
 
 			// Step 1: Add all documents to the provider
 			for (const doc of input.documents) {
-				await provider.add_memory(scope, doc.content);
+				const record = await provider.add_memory(scope, doc.content);
+				ingestedIds.push(record.id);
 			}
 
-			// Step 2: Wait for indexing (use a short delay for testing)
-			// In production, this should respect provider's convergence_wait_ms
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			// Step 2: Wait for indexing (for async providers)
+			const convergenceWaitMs = await getConvergenceWaitMs(provider);
+			if (convergenceWaitMs > 0) {
+				if (typeof provider.await_convergence === "function") {
+					try {
+						await provider.await_convergence(
+							scope,
+							ingestedIds,
+							convergenceWaitMs,
+						);
+					} catch {
+						await new Promise((resolve) =>
+							setTimeout(resolve, convergenceWaitMs),
+						);
+					}
+				} else {
+					await new Promise((resolve) =>
+						setTimeout(resolve, convergenceWaitMs),
+					);
+				}
+			}
 
 			// Step 3: Retrieve relevant documents
 			const results = await provider.retrieve_memory(scope, input.question, 5);
@@ -79,18 +114,24 @@ const ragBenchmark: Benchmark = {
 			// Step 4: Calculate scores
 			const expected = benchmarkCase.expected as string;
 			const expectedLower = expected.toLowerCase();
-			const hasRelevantDoc = results.some((result) =>
-				result.record.context.toLowerCase().includes(expectedLower),
-			);
 
 			// Calculate precision: How many retrieved docs are relevant
 			const relevantCount = results.filter((result) => {
 				// Simple heuristic: check if result contains key terms from expected answer
 				const contextLower = result.record.context.toLowerCase();
+
+				// Preserve the old behavior (exact expected string present), which matters for
+				// short expected answers like acronyms ("USA") or numeric answers ("5").
+				if (contextLower.includes(expectedLower)) return true;
+
 				return expectedLower
-					.split(" ")
+					.split(/\s+/)
+					.filter(Boolean)
 					.some((term) => term.length > 3 && contextLower.includes(term));
 			}).length;
+
+			// Relevance heuristic: treat any doc with non-zero key-term overlap as relevant.
+			const hasRelevantDoc = relevantCount > 0;
 
 			const precision = results.length > 0 ? relevantCount / results.length : 0;
 
@@ -122,6 +163,12 @@ const ragBenchmark: Benchmark = {
 					stack: error instanceof Error ? error.stack : undefined,
 				},
 			};
+		} finally {
+			if (ingestedIds.length > 0) {
+				await cleanupIngested(provider, scope, ingestedIds).catch(() => {
+					// Ignore cleanup errors
+				});
+			}
 		}
 	},
 };

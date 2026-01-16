@@ -40,16 +40,20 @@ function parseCliArgs(): CLIArgs {
 		if (arg === "--benchmarks" || arg === "-b") {
 			i++;
 			// Collect all benchmark names until we hit another option or end
-			while (i < args.length && args[i] && !args[i]!.startsWith("-")) {
-				benchmarks.push(args[i]!);
+			while (i < args.length && args[i] && !args[i]?.startsWith("-")) {
+				const value = args[i];
+				if (!value) break;
+				benchmarks.push(value);
 				i++;
 			}
 			i--; // Back up one since the for loop will increment
 		} else if (arg === "--providers" || arg === "-p") {
 			i++;
 			// Collect all provider names until we hit another option or end
-			while (i < args.length && args[i] && !args[i]!.startsWith("-")) {
-				providers.push(args[i]!);
+			while (i < args.length && args[i] && !args[i]?.startsWith("-")) {
+				const value = args[i];
+				if (!value) break;
+				providers.push(value);
 				i++;
 			}
 			i--; // Back up one since the for loop will increment
@@ -133,7 +137,8 @@ async function runBenchmark(
 
 		// Process each item
 		for (let i = 0; i < preparedData.length; i++) {
-			const item = preparedData[i]!;
+			const item = preparedData[i];
+			if (!item) continue;
 			console.log(`\n--- Processing item ${i + 1}/${preparedData.length} ---`);
 			console.log(`Context preview: ${item.context.substring(0, 100)}...`);
 
@@ -151,7 +156,7 @@ async function runBenchmark(
 				const expected =
 					item.metadata.expectedAnswer || item.metadata.expectedResponse;
 				console.log(
-					`Expected: ${typeof expected === "string" ? expected.substring(0, 100) + "..." : expected}`,
+					`Expected: ${typeof expected === "string" ? `${expected.substring(0, 100)}...` : expected}`,
 				);
 			}
 		}
@@ -205,7 +210,7 @@ async function handleListBenchmarks(jsonOutput: boolean): Promise<void> {
 	if (jsonOutput) {
 		console.log(formatBenchmarkJson(result.benchmarks));
 	} else {
-		console.log("\n" + formatBenchmarkTable(result.benchmarks));
+		console.log(`\n${formatBenchmarkTable(result.benchmarks)}`);
 	}
 }
 
@@ -252,15 +257,19 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 
 		if (arg === "--providers" || arg === "-p") {
 			i++;
-			while (i < rawArgs.length && rawArgs[i] && !rawArgs[i]!.startsWith("-")) {
-				providers.push(rawArgs[i]!);
+			while (i < rawArgs.length && rawArgs[i] && !rawArgs[i]?.startsWith("-")) {
+				const value = rawArgs[i];
+				if (!value) break;
+				providers.push(value);
 				i++;
 			}
 			i--;
 		} else if (arg === "--benchmarks" || arg === "-b") {
 			i++;
-			while (i < rawArgs.length && rawArgs[i] && !rawArgs[i]!.startsWith("-")) {
-				benchmarks.push(rawArgs[i]!);
+			while (i < rawArgs.length && rawArgs[i] && !rawArgs[i]?.startsWith("-")) {
+				const value = rawArgs[i];
+				if (!value) break;
+				benchmarks.push(value);
 				i++;
 			}
 			i--;
@@ -271,8 +280,8 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 					"--concurrency requires a value. Usage: --concurrency <number>",
 				);
 			}
-			concurrency = Number.parseInt(rawArgs[i]!, 10);
-			if (isNaN(concurrency) || concurrency < 1) {
+			concurrency = Number.parseInt(rawArgs[i] ?? "", 10);
+			if (Number.isNaN(concurrency) || concurrency < 1) {
 				throw new Error("--concurrency must be a positive integer");
 			}
 		} else if (arg === "--limit" || arg === "-l") {
@@ -280,7 +289,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 			if (i >= rawArgs.length || !rawArgs[i]) {
 				throw new Error("--limit requires a value. Usage: --limit <number>");
 			}
-			const parsed = Number.parseInt(rawArgs[i]!, 10);
+			const parsed = Number.parseInt(rawArgs[i] ?? "", 10);
 			if (!Number.isFinite(parsed) || parsed < 1) {
 				throw new Error("--limit must be a positive integer");
 			}
@@ -292,7 +301,7 @@ async function handleEval(rawArgs: string[]): Promise<void> {
 					"--resume requires a run ID. Example: --resume run_1735000000000_abc123",
 				);
 			}
-			resumeRunId = rawArgs[i]!;
+			resumeRunId = rawArgs[i];
 		}
 	}
 
@@ -353,7 +362,7 @@ async function handleExplore(rawArgs: string[]): Promise<void> {
 			if (i >= rawArgs.length || !rawArgs[i]) {
 				throw new Error("--port requires a value. Usage: --port <number>");
 			}
-			port = Number.parseInt(rawArgs[i]!, 10);
+			port = Number.parseInt(rawArgs[i] ?? "", 10);
 			if (Number.isNaN(port) || port < 1 || port > 65535) {
 				throw new Error("--port must be an integer between 1 and 65535");
 			}
@@ -477,7 +486,10 @@ Examples:
 			const benchmarkData = BENCHMARK_DATA[benchmarkType];
 
 			for (const providerName of args.providers) {
-				const provider = providerRegistry[providerName]!;
+				const provider = providerRegistry[providerName];
+				if (!provider) {
+					throw new Error(`Provider not found in registry: ${providerName}`);
+				}
 				await runBenchmark(
 					benchmarkType,
 					benchmarkData,

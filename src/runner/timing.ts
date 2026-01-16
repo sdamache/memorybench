@@ -7,7 +7,7 @@
  * @module src/runner/timing
  */
 
-import type { TimedResult, OperationTiming } from "./types";
+import type { OperationTiming, TimedResult } from "./types";
 
 /**
  * Wraps an async operation to capture its execution timing.

@@ -7,15 +7,13 @@
  * @module src/runner/gating
  */
 
-import { BenchmarkRegistry } from "../loaders/benchmarks";
+import type { ProviderCapabilities } from "../../types/core";
+import {
+	BenchmarkRegistry,
+	checkProviderCompatibility,
+} from "../loaders/benchmarks";
 import { ProviderRegistry } from "../loaders/providers";
-import { checkProviderCompatibility } from "../loaders/benchmarks";
-import type {
-	RunSelection,
-	RunPlan,
-	RunPlanEntry,
-	SkipReason,
-} from "./types";
+import type { RunPlan, RunPlanEntry, RunSelection, SkipReason } from "./types";
 
 // =============================================================================
 // Selection Resolution
@@ -33,7 +31,9 @@ export async function resolveProviders(
 	providerNames: string[],
 ): Promise<string[]> {
 	const registry = await ProviderRegistry.getInstance();
-	const available = registry.listProviders().map((p) => p.manifest.provider.name);
+	const available = registry
+		.listProviders()
+		.map((p) => p.manifest.provider.name);
 	const missing: string[] = [];
 
 	for (const name of providerNames) {
@@ -148,7 +148,7 @@ export async function checkCapabilityCompatibility(
 	const requiredCapabilities = benchmark.benchmark.meta.required_capabilities;
 
 	// Get provider capabilities - handle async/optional get_capabilities()
-	let providerCapabilities;
+	let providerCapabilities: ProviderCapabilities;
 	if (provider.adapter.get_capabilities) {
 		providerCapabilities = await provider.adapter.get_capabilities();
 	} else {
@@ -221,9 +221,7 @@ export function createSkipReason(
  * @param selection - Parsed CLI arguments
  * @returns Complete run plan with eligible and skipped entries
  */
-export async function buildRunPlan(
-	selection: RunSelection,
-): Promise<RunPlan> {
+export async function buildRunPlan(selection: RunSelection): Promise<RunPlan> {
 	// 1. Resolve and validate selections
 	const providers = await resolveProviders(selection.providers);
 	const benchmarks = await resolveBenchmarks(selection.benchmarks);

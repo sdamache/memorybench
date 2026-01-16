@@ -6,8 +6,8 @@
 import { describe, expect, test } from "bun:test";
 import { BenchmarkRegistry } from "../../src/loaders/benchmarks";
 import {
-	loadBenchmarkManifest,
 	hasManifest,
+	loadBenchmarkManifest,
 } from "../../src/loaders/data-driven-benchmark";
 import { validateBenchmarkManifest } from "../../types/benchmark-manifest";
 

@@ -141,10 +141,10 @@ export interface RunPerformanceMetrics {
  * High-resolution timer for capturing operation durations.
  */
 export class PhaseTimer {
-	private startTime: number = 0;
+	private startTime = 0;
 	private phases: PhaseTimingRaw[] = [];
 	private currentPhase: string | null = null;
-	private currentPhaseStart: number = 0;
+	private currentPhaseStart = 0;
 
 	/**
 	 * Start timing a new phase.
@@ -171,7 +171,9 @@ export class PhaseTimer {
 		this.phases.push({
 			phase: this.currentPhase,
 			duration_ms: endTime - this.currentPhaseStart,
-			started_at: new Date(Date.now() - (endTime - this.currentPhaseStart)).toISOString(),
+			started_at: new Date(
+				Date.now() - (endTime - this.currentPhaseStart),
+			).toISOString(),
 			ended_at: new Date().toISOString(),
 		});
 		this.currentPhase = null;
@@ -321,7 +323,9 @@ export class APICallCollector {
 function percentile(sortedValues: number[], p: number): number {
 	if (sortedValues.length === 0) return 0;
 	const index = Math.ceil((p / 100) * sortedValues.length) - 1;
-	return sortedValues[Math.max(0, Math.min(index, sortedValues.length - 1))] ?? 0;
+	return (
+		sortedValues[Math.max(0, Math.min(index, sortedValues.length - 1))] ?? 0
+	);
 }
 
 /**
@@ -359,7 +363,9 @@ export function calculateTimingStats(durations: number[]): TimingStats {
 /**
  * Aggregate token stats from multiple cases.
  */
-export function aggregateTokenStats(stats: (TokenStats | undefined)[]): TokenStats {
+export function aggregateTokenStats(
+	stats: (TokenStats | undefined)[],
+): TokenStats {
 	const validStats = stats.filter((s): s is TokenStats => s !== undefined);
 
 	if (validStats.length === 0) {
@@ -373,8 +379,14 @@ export function aggregateTokenStats(stats: (TokenStats | undefined)[]): TokenSta
 		};
 	}
 
-	const total_input_tokens = validStats.reduce((sum, s) => sum + s.total_input_tokens, 0);
-	const total_output_tokens = validStats.reduce((sum, s) => sum + s.total_output_tokens, 0);
+	const total_input_tokens = validStats.reduce(
+		(sum, s) => sum + s.total_input_tokens,
+		0,
+	);
+	const total_output_tokens = validStats.reduce(
+		(sum, s) => sum + s.total_output_tokens,
+		0,
+	);
 	const call_count = validStats.reduce((sum, s) => sum + s.call_count, 0);
 
 	return {

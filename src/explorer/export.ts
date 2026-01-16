@@ -1,7 +1,11 @@
-import { join } from "node:path";
-import { readdir } from "node:fs/promises";
 import type { Dirent } from "node:fs";
-import type { MetricsSummary, RunManifest, ResultRecord } from "../results/schema";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
+import type {
+	MetricsSummary,
+	ResultRecord,
+	RunManifest,
+} from "../results/schema";
 import { buildMetricsSummary } from "../results/summarize";
 import { getRunDir, readExistingResults } from "../results/writer";
 import type { ExplorerData, RunInfo } from "./types";
@@ -9,7 +13,10 @@ import type { ExplorerData, RunInfo } from "./types";
 /**
  * Computes summary statistics from results when metrics_summary.json is missing.
  */
-function computeSummaryFromResults(runId: string, results: ResultRecord[]): MetricsSummary {
+function computeSummaryFromResults(
+	runId: string,
+	results: ResultRecord[],
+): MetricsSummary {
 	const totals = {
 		cases: results.length,
 		passed: 0,
@@ -193,7 +200,9 @@ export async function listAvailableRuns(baseDir = "runs"): Promise<RunInfo[]> {
 	}
 
 	// Sort by timestamp, newest first
-	runs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+	runs.sort(
+		(a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+	);
 
 	return runs;
 }
