@@ -398,9 +398,8 @@ const memvidProvider: BaseProvider = {
 				convergence_wait_ms: 0,
 			},
 			intelligence_flags: {
-				auto_extraction: true,
-				graph_support: true,
-				graph_type: "knowledge",
+				auto_extraction: false,
+				graph_support: false,
 			},
 		};
 	},

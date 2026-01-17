@@ -21,9 +21,8 @@
 			"async_indexing": false
 		},
 		"intelligence_flags": {
-			"auto_extraction": true,
-			"graph_support": true,
-			"graph_type": "knowledge"
+			"auto_extraction": false,
+			"graph_support": false
 		}
 	},
 	"semantic_properties": {
