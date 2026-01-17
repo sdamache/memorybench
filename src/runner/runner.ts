@@ -263,7 +263,9 @@ export async function executeCases(
 		for (let i = 0; i < casesToRun.length; i++) {
 			const benchmarkCase = casesToRun[i];
 			if (!benchmarkCase) {
-				continue;
+				throw new Error(
+					`Missing benchmark case at index ${i}/${totalCasesToRun}`,
+				);
 			}
 			const result = await executeCase(
 				providerName,

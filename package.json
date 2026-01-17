@@ -23,6 +23,7 @@
 		"@ai-sdk/google-vertex": "^3.0.74",
 		"@ai-sdk/openai": "^2.0.88",
 		"@anthropic-ai/vertex-sdk": "^0.14.0",
+		"@memvid/sdk": "^2.0.146",
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",
 		"ai": "^5.0.44",
