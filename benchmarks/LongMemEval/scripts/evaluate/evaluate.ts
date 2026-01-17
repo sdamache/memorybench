@@ -467,18 +467,18 @@ async function evaluateAll() {
 			const correct = evaluations.filter((e) => e.label === 1).length;
 			const accuracy = total > 0 ? (correct / total) * 100 : 0;
 
-			// Calculate stats by question type
-			const byQuestionType: Record<string, { correct: number; total: number }> =
-				{};
-			for (const ev of evaluations) {
-				if (!byQuestionType[ev.questionType]) {
-					byQuestionType[ev.questionType] = { correct: 0, total: 0 };
+				// Calculate stats by question type
+				const byQuestionType: Record<string, { correct: number; total: number }> =
+					{};
+				for (const ev of evaluations) {
+					const bucket =
+						byQuestionType[ev.questionType] ??
+						(byQuestionType[ev.questionType] = { correct: 0, total: 0 });
+					bucket.total++;
+					if (ev.label === 1) {
+						bucket.correct++;
+					}
 				}
-				byQuestionType[ev.questionType].total++;
-				if (ev.label === 1) {
-					byQuestionType[ev.questionType].correct++;
-				}
-			}
 
 			// Save
 			const output: any = {
@@ -528,17 +528,17 @@ async function evaluateAll() {
 	const correct = evaluations.filter((e) => e.label === 1).length;
 	const accuracy = total > 0 ? (correct / total) * 100 : 0;
 
-	// Calculate final stats by question type
-	const byQuestionType: Record<string, { correct: number; total: number }> = {};
-	for (const ev of evaluations) {
-		if (!byQuestionType[ev.questionType]) {
-			byQuestionType[ev.questionType] = { correct: 0, total: 0 };
+		// Calculate final stats by question type
+		const byQuestionType: Record<string, { correct: number; total: number }> = {};
+		for (const ev of evaluations) {
+			const bucket =
+				byQuestionType[ev.questionType] ??
+				(byQuestionType[ev.questionType] = { correct: 0, total: 0 });
+			bucket.total++;
+			if (ev.label === 1) {
+				bucket.correct++;
+			}
 		}
-		byQuestionType[ev.questionType].total++;
-		if (ev.label === 1) {
-			byQuestionType[ev.questionType].correct++;
-		}
-	}
 
 	console.log("=".repeat(60));
 	console.log("EVALUATION SUMMARY");

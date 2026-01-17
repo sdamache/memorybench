@@ -75,7 +75,12 @@ function createAzureApiVersionFetch(apiVersion: string): typeof fetch {
 					: input.url;
 		const urlObj = new URL(urlString);
 		urlObj.searchParams.set("api-version", apiVersion);
-		return fetch(urlObj, init);
+
+		if (input instanceof Request) {
+			return fetch(new Request(urlObj.toString(), input), init);
+		}
+
+		return fetch(urlObj.toString(), init);
 	}) as typeof fetch;
 
 	const maybePreconnect = (

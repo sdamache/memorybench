@@ -160,6 +160,7 @@ describe("createSimpleIngestion", () => {
 					metadata: metadata ?? {},
 				};
 			},
+
 			async retrieve_memory() {
 				return [];
 			},
