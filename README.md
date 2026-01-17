@@ -164,6 +164,7 @@ See [docs/output-format.md](docs/output-format.md) for complete schema documenta
 | AQRAG | intelligent_memory | Adaptive query RAG with auto-extraction | ✅ Yes |
 | Supermemory | intelligent_memory | Cloud-hosted memory with document processing | ✅ SUPERMEMORY_API_KEY |
 | Mem0 | intelligent_memory | Memory with LLM extraction and graph support | ✅ MEM0_API_KEY |
+| Memvid | hybrid | Single-file `.mv2` memory layer (append-only frames) | ❌ No |
 
 ### Provider Capabilities
 
@@ -176,6 +177,7 @@ Each provider declares its capabilities in a `manifest.json`. The runner automat
 | AQRAG | ✅ | ✅ | ✅ | ❌ | ❌ | Yes | 750ms |
 | Supermemory | ✅ | ✅ | ✅ | ✅ | ✅ | Yes | 30s |
 | Mem0 | ✅ | ✅ | ✅ | ✅ | ✅ | Yes | 30s |
+| Memvid | ✅ | ✅ | ✅ | ❌ | ❌ | No | 0ms |
 
 ## Adding a Benchmark
 

@@ -29,6 +29,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .eslintcache
 .cache
 *.tsbuildinfo
+.tmp/
 
 # IntelliJ based IDEs
 .idea
