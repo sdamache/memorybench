@@ -309,7 +309,11 @@ async function runDeleteLeakage(
 	const record = await provider.add_memory(scope, content);
 	mutableScores.add_latency_ms = performance.now() - addStart;
 	const recordId = record.id;
-	mutableArtifacts.ingested_ids = [recordId];
+	mutableArtifacts.ingested_id = recordId;
+
+	// Add to cleanup list BEFORE deleting - ensures cleanup runs if delete fails
+	// (cleanupIngested handles already-deleted IDs gracefully)
+	ingestedIds.push(recordId);
 
 	// Step 2: Wait for convergence
 	await waitForConvergence(provider, scope, [recordId]);
@@ -318,9 +322,6 @@ async function runDeleteLeakage(
 	const deleteStart = performance.now();
 	await provider.delete_memory(scope, recordId);
 	mutableScores.delete_latency_ms = performance.now() - deleteStart;
-
-	// Don't add to ingestedIds since we already deleted it
-	// Clear from cleanup list as it's already deleted
 
 	// Step 4: Wait for delete to propagate
 	await waitForConvergence(provider, scope, []);
