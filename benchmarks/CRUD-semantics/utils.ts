@@ -115,7 +115,7 @@ export async function getConvergenceWaitMs(
  * @param provider - The memory provider
  * @param scope - Execution context for the operation
  * @param ingestedIds - IDs of recently written records
- * @param waitMs - Override wait time (uses provider capabilities if 0)
+ * @param waitMs - Override wait time in ms (omit to use provider capabilities; pass 0 to skip waiting)
  */
 export async function waitForConvergence(
 	provider: BaseProvider,
