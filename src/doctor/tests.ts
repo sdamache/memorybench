@@ -83,6 +83,32 @@ export async function runScopeIsolationTest(
 			await waitForConvergence(ctx, scopeA, [memory.id], convergenceMs);
 		}
 
+		// Verify token is visible in scope A first (avoid false positive from eventual consistency)
+		const resultsA = await executeWithRetry(() =>
+			ctx.provider.retrieve_memory(scopeA, token, 10),
+		);
+		const visibleInScopeA = detectToken(resultsA, token);
+
+		if (!visibleInScopeA) {
+			// Cleanup before returning error
+			try {
+				await executeWithRetry(
+					() => ctx.provider.delete_memory(scopeA, memory.id),
+					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+				);
+			} catch {
+				// Ignore cleanup errors
+			}
+
+			return {
+				test_name: "scope_isolation",
+				status: "error",
+				message: "Could not verify token visibility in scope A - test inconclusive",
+				duration_ms: Date.now() - startTime,
+				details: { token, reason: "token_not_visible_in_scope_a" },
+			};
+		}
+
 		// Query from scope B - should NOT find the token
 		const resultsB = await executeWithRetry(() =>
 			ctx.provider.retrieve_memory(scopeB, token, 10),
@@ -331,6 +357,16 @@ export async function runDeleteLeakageTest(
 		const visibleBeforeDelete = detectToken(beforeResults, token);
 
 		if (!visibleBeforeDelete) {
+			// Cleanup before returning error (avoid leaving stray test records)
+			try {
+				await executeWithRetry(
+					() => ctx.provider.delete_memory(scope, memory.id),
+					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+				);
+			} catch {
+				// Ignore cleanup errors
+			}
+
 			// Token never became visible - can't test delete
 			return {
 				test_name: "delete_leakage",
@@ -338,7 +374,7 @@ export async function runDeleteLeakageTest(
 				message:
 					"Could not verify token visibility before delete - test inconclusive",
 				duration_ms: Date.now() - startTime,
-				details: { token, reason: "token_not_visible_before_delete" },
+				details: { token, memory_id: memory.id, reason: "token_not_visible_before_delete" },
 			};
 		}
 

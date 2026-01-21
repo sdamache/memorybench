@@ -116,12 +116,18 @@ export async function runDoctor(
 
 	if (isVisibilityDelayDetails(visibilityDetailsCandidate)) {
 		const details = visibilityDetailsCandidate;
-		// Use max as conservative estimate, with 20% buffer
-		if (details.max_visibility_ms !== null) {
-			suggestedConvergenceWaitMs = Math.ceil(details.max_visibility_ms * 1.2);
-		} else if (details.p95_visibility_ms !== null) {
-			suggestedConvergenceWaitMs = Math.ceil(details.p95_visibility_ms * 1.2);
+		// Only suggest convergence_wait_ms when all samples succeeded (no timeouts)
+		// If there are timeouts, the measurement understates required wait time
+		if (details.timed_out_samples === 0) {
+			// Use max as conservative estimate, with 20% buffer
+			if (details.max_visibility_ms !== null) {
+				suggestedConvergenceWaitMs = Math.ceil(details.max_visibility_ms * 1.2);
+			} else if (details.p95_visibility_ms !== null) {
+				suggestedConvergenceWaitMs = Math.ceil(details.p95_visibility_ms * 1.2);
+			}
 		}
+		// When timeouts occur, leave suggestedConvergenceWaitMs as null
+		// to indicate the measurement was inconclusive
 	}
 
 	// Calculate overall status
