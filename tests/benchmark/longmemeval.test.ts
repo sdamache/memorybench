@@ -126,7 +126,14 @@ describe("LongMemEval type instructions", () => {
 // Data File Tests
 // =============================================================================
 
-describe("LongMemEval data file", () => {
+// Load manifest to get the data file path dynamically (keeps skipIf in sync with tests)
+// Data file is large (5.4MB) and not committed to git - must be manually downloaded
+const MANIFEST_PATH = "benchmarks/LongMemEval/manifest.json";
+const benchmarkManifest = await loadBenchmarkManifest(MANIFEST_PATH);
+const DATA_FILE_PATH = `benchmarks/LongMemEval/${benchmarkManifest.data_file}`;
+const dataFileExists = await Bun.file(DATA_FILE_PATH).exists();
+
+describe.skipIf(!dataFileExists)("LongMemEval data file", () => {
 	test("data file exists at configured path", async () => {
 		const manifest = await loadBenchmarkManifest(
 			"benchmarks/LongMemEval/manifest.json",
