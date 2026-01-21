@@ -56,10 +56,18 @@ describe("Doctor Command - Live Integration Tests", () => {
 
 		// LocalBaseline should pass scope_isolation, visibility_delay, delete_leakage
 		// LocalBaseline should skip update_staleness (doesn't support update_memory)
-		const scopeTest = report.tests.find((t) => t.test_name === "scope_isolation");
-		const visibilityTest = report.tests.find((t) => t.test_name === "visibility_delay");
-		const deleteTest = report.tests.find((t) => t.test_name === "delete_leakage");
-		const updateTest = report.tests.find((t) => t.test_name === "update_staleness");
+		const scopeTest = report.tests.find(
+			(t) => t.test_name === "scope_isolation",
+		);
+		const visibilityTest = report.tests.find(
+			(t) => t.test_name === "visibility_delay",
+		);
+		const deleteTest = report.tests.find(
+			(t) => t.test_name === "delete_leakage",
+		);
+		const updateTest = report.tests.find(
+			(t) => t.test_name === "update_staleness",
+		);
 
 		expect(scopeTest?.status).toBe("pass");
 		expect(visibilityTest?.status).toBe("pass");
@@ -107,7 +115,9 @@ describe("Doctor Command - Live Integration Tests", () => {
 			json_output: false,
 		});
 
-		const visibilityTest = report.tests.find((t) => t.test_name === "visibility_delay");
+		const visibilityTest = report.tests.find(
+			(t) => t.test_name === "visibility_delay",
+		);
 		expect(visibilityTest).toBeDefined();
 		expect(visibilityTest?.status).toBe("pass");
 
@@ -144,7 +154,9 @@ describe("Doctor Command - Live Integration Tests", () => {
 			json_output: false,
 		});
 
-		const scopeTest = report.tests.find((t) => t.test_name === "scope_isolation");
+		const scopeTest = report.tests.find(
+			(t) => t.test_name === "scope_isolation",
+		);
 		expect(scopeTest).toBeDefined();
 		expect(scopeTest?.status).toBe("pass");
 		expect(scopeTest?.message).toContain("not retrievable from scope B");
@@ -171,7 +183,9 @@ describe("Doctor Command - Live Integration Tests", () => {
 			json_output: false,
 		});
 
-		const deleteTest = report.tests.find((t) => t.test_name === "delete_leakage");
+		const deleteTest = report.tests.find(
+			(t) => t.test_name === "delete_leakage",
+		);
 		expect(deleteTest).toBeDefined();
 		expect(deleteTest?.status).toBe("pass");
 		expect(deleteTest?.message).toContain("not retrievable");
@@ -197,7 +211,9 @@ describe("Doctor Command - Live Integration Tests", () => {
 			json_output: false,
 		});
 
-		const updateTest = report.tests.find((t) => t.test_name === "update_staleness");
+		const updateTest = report.tests.find(
+			(t) => t.test_name === "update_staleness",
+		);
 		expect(updateTest).toBeDefined();
 		expect(updateTest?.status).toBe("skip");
 		expect(updateTest?.message).toContain("update_memory not supported");
