@@ -94,10 +94,11 @@ describe("US2: Capability Gating - Skip Incompatible Combinations", () => {
 		// and skips incompatible provider/benchmark combinations.
 
 		// Arrange - Build a run plan to check gating without execution
-		// Using CRUD-semantics which requires update_memory (LocalBaseline doesn't have it)
+		// Note: CRUD-semantics benchmark-level capabilities are add/retrieve/delete
+		// (update_memory is gated per-case at runtime, not at benchmark level)
 		const selection: RunSelection = {
 			providers: ["LocalBaseline"], // has add/retrieve/delete, NO update
-			benchmarks: ["CRUD-semantics"], // some cases require update_memory
+			benchmarks: ["CRUD-semantics"], // benchmark-level: add/retrieve/delete only
 			concurrency: 1,
 		};
 
