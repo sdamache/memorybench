@@ -126,7 +126,12 @@ describe("LongMemEval type instructions", () => {
 // Data File Tests
 // =============================================================================
 
-describe("LongMemEval data file", () => {
+// Check if data file exists for conditional test execution
+// Data file is large (5.4MB) and not committed to git - must be manually downloaded
+const DATA_FILE_PATH = "benchmarks/LongMemEval/datasets/longmemeval_s_cleaned.json";
+const dataFileExists = await Bun.file(DATA_FILE_PATH).exists();
+
+describe.skipIf(!dataFileExists)("LongMemEval data file", () => {
 	test("data file exists at configured path", async () => {
 		const manifest = await loadBenchmarkManifest(
 			"benchmarks/LongMemEval/manifest.json",

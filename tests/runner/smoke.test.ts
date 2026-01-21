@@ -94,9 +94,10 @@ describe("US2: Capability Gating - Skip Incompatible Combinations", () => {
 		// and skips incompatible provider/benchmark combinations.
 
 		// Arrange - Build a run plan to check gating without execution
+		// Using CRUD-semantics which requires update_memory (LocalBaseline doesn't have it)
 		const selection: RunSelection = {
 			providers: ["LocalBaseline"], // has add/retrieve/delete, NO update
-			benchmarks: ["LongMemEval"], // requires add/retrieve only
+			benchmarks: ["CRUD-semantics"], // some cases require update_memory
 			concurrency: 1,
 		};
 
@@ -180,9 +181,11 @@ describe("Integration: Deterministic Ordering", () => {
 	test("should produce deterministic run plan ordering", async () => {
 		// Arrange - Use multiple benchmarks to test alphabetical sorting
 		// (Using benchmarks instead of providers since only LocalBaseline is available)
+		// Note: Using CRUD-semantics instead of LongMemEval since LongMemEval requires
+		// a large data file (5.4MB) that is not committed to git
 		const selection: RunSelection = {
 			providers: ["LocalBaseline"],
-			benchmarks: ["RAG-template-benchmark", "LongMemEval"], // Two benchmarks to test sorting
+			benchmarks: ["RAG-template-benchmark", "CRUD-semantics"], // Two benchmarks to test sorting
 			concurrency: 1,
 		};
 
@@ -206,10 +209,10 @@ describe("Integration: Deterministic Ordering", () => {
 		}
 
 		// Verify alphabetical ordering of benchmarks
-		// Input: ["RAG-template-benchmark", "LongMemEval"]
-		// Expected sorted: ["LongMemEval", "RAG-template-benchmark"]
+		// Input: ["RAG-template-benchmark", "CRUD-semantics"]
+		// Expected sorted: ["CRUD-semantics", "RAG-template-benchmark"]
 		const benchmarkNames = plan1.entries.map((e) => e.benchmark_name);
 		const uniqueBenchmarks = [...new Set(benchmarkNames)];
-		expect(uniqueBenchmarks).toEqual(["LongMemEval", "RAG-template-benchmark"]);
+		expect(uniqueBenchmarks).toEqual(["CRUD-semantics", "RAG-template-benchmark"]);
 	});
 });
