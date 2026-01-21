@@ -37,6 +37,9 @@ bun run index.ts eval --resume <run_id>
 
 # Explore results in an interactive UI
 bun run index.ts explore --run <run_id> --port 3000
+
+# Run provider conformance checks (validate provider before benchmarking)
+bun run index.ts doctor --provider LocalBaseline
 ```
 
 ## Running Benchmarks
@@ -298,6 +301,54 @@ bun run index.ts explore --run run_1766388833350_hpq76ud --port 3000
 - Filter by provider, benchmark, status
 - Sortable results table with pagination
 - Detail panel for individual cases
+
+## Provider Conformance Check (Doctor)
+
+Before running large benchmarks, validate that a provider is correctly wired with the doctor command:
+
+```bash
+# Run conformance checks against a provider
+bun run index.ts doctor --provider LocalBaseline
+
+# Output JSON report instead of console output
+bun run index.ts doctor --provider LocalBaseline --json
+```
+
+**Conformance Tests:**
+
+| Test | Description |
+|------|-------------|
+| `scope_isolation` | Verifies data written to one scope is not retrievable from another scope |
+| `visibility_delay` | Measures read-after-write latency and suggests `convergence_wait_ms` |
+| `delete_leakage` | Verifies deleted content is not retrievable via adversarial queries |
+| `update_staleness` | Verifies old content is replaced after updates (capability-gated) |
+
+**Example Output:**
+
+```
+Doctor Report: LocalBaseline v1.0.0
+============================================================
+Timestamp: 2026-01-20T02:29:13.853Z
+Duration: 0.13s
+
+Tests:
+  ✓ scope_isolation      PASS  (0.0s)
+    Data written to scope A is not retrievable from scope B
+
+  ✓ visibility_delay     PASS  (0.0s)
+    Read-after-write visibility: p95=1ms, max=1ms
+
+  ✓ delete_leakage       PASS  (0.0s)
+    Deleted content is not retrievable via adversarial queries
+
+  ⊘ update_staleness     SKIP  (0.0s)
+    Skipped: update_memory not supported
+    Missing capability: update_memory
+
+============================================================
+Overall: PASS (3 passed, 1 skipped, 0 failed, 0 errored)
+Suggested convergence_wait_ms: 2
+```
 
 ## Documentation
 

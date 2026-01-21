@@ -402,6 +402,56 @@ async function handleExplore(rawArgs: string[]): Promise<void> {
 	await startExplorer(runId, port);
 }
 
+/**
+ * Handle the 'doctor' subcommand - provider conformance testing
+ */
+async function handleDoctor(rawArgs: string[]): Promise<void> {
+	let providerName: string | undefined;
+	let jsonOutput = false;
+	let outputPath: string | undefined;
+
+	// Parse arguments
+	for (let i = 0; i < rawArgs.length; i++) {
+		const arg = rawArgs[i];
+
+		if (arg === "--provider" || arg === "-p") {
+			const nextArg = rawArgs[i + 1];
+			if (!nextArg || nextArg.startsWith("-")) {
+				throw new Error(`Missing value for ${arg} option`);
+			}
+			i++;
+			providerName = nextArg;
+		} else if (arg === "--json") {
+			jsonOutput = true;
+		} else if (arg === "--output" || arg === "-o") {
+			const nextArg = rawArgs[i + 1];
+			if (!nextArg || nextArg.startsWith("-")) {
+				throw new Error(`Missing value for ${arg} option`);
+			}
+			i++;
+			outputPath = nextArg;
+		}
+	}
+
+	// Validate required arguments
+	if (!providerName) {
+		const providerNames = await getProviderNamesForHelp();
+		throw new Error(
+			`No provider specified.\n\n` +
+				`Usage: bun run index.ts doctor --provider <name> [--json]\n\n` +
+				`Available providers: ${providerNames}`,
+		);
+	}
+
+	// Run doctor
+	const { runDoctor } = await import("./src/doctor");
+	await runDoctor({
+		provider: providerName,
+		json_output: jsonOutput,
+		output_path: outputPath,
+	});
+}
+
 async function main(): Promise<void> {
 	try {
 		const rawArgs = Bun.argv.slice(2);
@@ -415,6 +465,12 @@ async function main(): Promise<void> {
 		// Check for 'explore' subcommand
 		if (rawArgs[0] === "explore") {
 			await handleExplore(rawArgs.slice(1));
+			return;
+		}
+
+		// Check for 'doctor' subcommand (017-doctor-command)
+		if (rawArgs[0] === "doctor") {
+			await handleDoctor(rawArgs.slice(1));
 			return;
 		}
 
@@ -443,6 +499,7 @@ Memory Benchmark CLI
 Usage:
   bun run index.ts eval --providers <provider1> [provider2...] --benchmarks <benchmark1> [benchmark2...] [--concurrency N] [--limit N]
   bun run index.ts explore --run <run_id> [--port N]
+  bun run index.ts doctor --provider <name> [--json]
   bun run index.ts list benchmarks [--json]
   bun run index.ts list providers [--json]
 
@@ -457,6 +514,10 @@ Commands:
     --run, -r         Run ID to visualize (e.g., run_1735000000000_abc)
     --port            Port to run the explorer on (default: 3000)
 
+  doctor              Run provider conformance tests
+    --provider, -p    Provider name to test (required)
+    --json            Output results to doctor_report.json
+
   list benchmarks     List all discovered benchmarks
   list providers      List all configured provider manifests
     --json            Output in JSON format for machine parsing
@@ -465,6 +526,8 @@ Examples:
   bun run index.ts eval --providers baseline --benchmarks RAG-template-benchmark
   bun run index.ts eval -p baseline ContextualRetrieval -b RAG-template-benchmark --concurrency 4
   bun run index.ts explore --run run_1766317324765_e904n0d
+  bun run index.ts doctor --provider LocalBaseline
+  bun run index.ts doctor --provider LocalBaseline --json
   bun run index.ts list benchmarks
   bun run index.ts list benchmarks --json
   bun run index.ts list providers
