@@ -163,9 +163,10 @@ export async function runScopeIsolationTest(
 	} catch (error) {
 		// Best-effort cleanup if memory was created before error
 		if (memoryId) {
+			const idToDelete = memoryId;
 			try {
 				await executeWithRetry(
-					() => ctx.provider.delete_memory(scopeA, memoryId!),
+					() => ctx.provider.delete_memory(scopeA, idToDelete),
 					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
 				);
 			} catch {
@@ -436,9 +437,10 @@ export async function runDeleteLeakageTest(
 	} catch (error) {
 		// Best-effort cleanup if memory was created before error
 		if (memoryId) {
+			const idToDelete = memoryId;
 			try {
 				await executeWithRetry(
-					() => ctx.provider.delete_memory(scope, memoryId!),
+					() => ctx.provider.delete_memory(scope, idToDelete),
 					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
 				);
 			} catch {
@@ -645,9 +647,10 @@ export async function runUpdateStalenessTest(
 	} catch (error) {
 		// Best-effort cleanup if memory was created before error
 		if (memoryId) {
+			const idToDelete = memoryId;
 			try {
 				await executeWithRetry(
-					() => ctx.provider.delete_memory(scope, memoryId!),
+					() => ctx.provider.delete_memory(scope, idToDelete),
 					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
 				);
 			} catch {
