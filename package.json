@@ -8,6 +8,10 @@
 		"@types/bun": "latest"
 	},
 	"scripts": {
+		"lint": "biome lint src providers types index.ts tests",
+		"lint:all": "biome lint .",
+		"format": "biome format --write src providers types index.ts tests",
+		"format:check": "biome format src providers types index.ts tests",
 		"check": "biome check src providers types index.ts tests",
 		"check:all": "biome check .",
 		"typecheck": "tsc --noEmit -p tsconfig.core.json",
