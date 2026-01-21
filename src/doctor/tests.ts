@@ -96,7 +96,12 @@ export async function runScopeIsolationTest(
 			try {
 				await executeWithRetry(
 					() => ctx.provider.delete_memory(scopeA, memory.id),
-					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+					{
+						base_delay_ms: 250,
+						max_delay_ms: 2000,
+						max_retries: 2,
+						jitter_factor: 0.25,
+					},
 				);
 			} catch {
 				// Ignore cleanup errors
@@ -105,7 +110,8 @@ export async function runScopeIsolationTest(
 			return {
 				test_name: "scope_isolation",
 				status: "error",
-				message: "Could not verify token visibility in scope A - test inconclusive",
+				message:
+					"Could not verify token visibility in scope A - test inconclusive",
 				duration_ms: Date.now() - startTime,
 				details: { token, reason: "token_not_visible_in_scope_a" },
 			};
@@ -167,7 +173,12 @@ export async function runScopeIsolationTest(
 			try {
 				await executeWithRetry(
 					() => ctx.provider.delete_memory(scopeA, idToDelete),
-					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+					{
+						base_delay_ms: 250,
+						max_delay_ms: 2000,
+						max_retries: 2,
+						jitter_factor: 0.25,
+					},
 				);
 			} catch {
 				// Ignore cleanup errors
@@ -380,7 +391,12 @@ export async function runDeleteLeakageTest(
 			try {
 				await executeWithRetry(
 					() => ctx.provider.delete_memory(scope, memory.id),
-					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+					{
+						base_delay_ms: 250,
+						max_delay_ms: 2000,
+						max_retries: 2,
+						jitter_factor: 0.25,
+					},
 				);
 			} catch {
 				// Ignore cleanup errors
@@ -393,7 +409,11 @@ export async function runDeleteLeakageTest(
 				message:
 					"Could not verify token visibility before delete - test inconclusive",
 				duration_ms: Date.now() - startTime,
-				details: { token, memory_id: memory.id, reason: "token_not_visible_before_delete" },
+				details: {
+					token,
+					memory_id: memory.id,
+					reason: "token_not_visible_before_delete",
+				},
 			};
 		}
 
@@ -441,7 +461,12 @@ export async function runDeleteLeakageTest(
 			try {
 				await executeWithRetry(
 					() => ctx.provider.delete_memory(scope, idToDelete),
-					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+					{
+						base_delay_ms: 250,
+						max_delay_ms: 2000,
+						max_retries: 2,
+						jitter_factor: 0.25,
+					},
 				);
 			} catch {
 				// Ignore cleanup errors
@@ -651,7 +676,12 @@ export async function runUpdateStalenessTest(
 			try {
 				await executeWithRetry(
 					() => ctx.provider.delete_memory(scope, idToDelete),
-					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+					{
+						base_delay_ms: 250,
+						max_delay_ms: 2000,
+						max_retries: 2,
+						jitter_factor: 0.25,
+					},
 				);
 			} catch {
 				// Ignore cleanup errors
