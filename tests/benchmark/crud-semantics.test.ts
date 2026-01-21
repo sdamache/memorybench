@@ -59,9 +59,9 @@ describe.skipIf(!LIVE_TESTS_ENABLED)("CRUD Semantics Benchmark - Live Integratio
 	test("write_retrieve case passes with LocalBaseline", async () => {
 		const cases = Array.from(crudBenchmark.cases());
 		const writeRetrieveCase = cases.find((c) => c.id === "write_retrieve_01");
-		expect(writeRetrieveCase).toBeDefined();
+		if (!writeRetrieveCase) throw new Error("write_retrieve_01 case not found");
 
-		const result = await crudBenchmark.run_case(provider, scope, writeRetrieveCase!);
+		const result = await crudBenchmark.run_case(provider, scope, writeRetrieveCase);
 
 		expect(result.case_id).toBe("write_retrieve_01");
 		expect(result.status).toBe("pass");
@@ -74,9 +74,9 @@ describe.skipIf(!LIVE_TESTS_ENABLED)("CRUD Semantics Benchmark - Live Integratio
 	test("delete_leakage case passes with LocalBaseline", async () => {
 		const cases = Array.from(crudBenchmark.cases());
 		const deleteLeakageCase = cases.find((c) => c.id === "delete_leakage_01");
-		expect(deleteLeakageCase).toBeDefined();
+		if (!deleteLeakageCase) throw new Error("delete_leakage_01 case not found");
 
-		const result = await crudBenchmark.run_case(provider, scope, deleteLeakageCase!);
+		const result = await crudBenchmark.run_case(provider, scope, deleteLeakageCase);
 
 		expect(result.case_id).toBe("delete_leakage_01");
 		expect(result.status).toBe("pass");
@@ -88,9 +88,9 @@ describe.skipIf(!LIVE_TESTS_ENABLED)("CRUD Semantics Benchmark - Live Integratio
 	test("update_staleness case skips when provider lacks update_memory", async () => {
 		const cases = Array.from(crudBenchmark.cases());
 		const updateStalenessCase = cases.find((c) => c.id === "update_staleness_01");
-		expect(updateStalenessCase).toBeDefined();
+		if (!updateStalenessCase) throw new Error("update_staleness_01 case not found");
 
-		const result = await crudBenchmark.run_case(provider, scope, updateStalenessCase!);
+		const result = await crudBenchmark.run_case(provider, scope, updateStalenessCase);
 
 		expect(result.case_id).toBe("update_staleness_01");
 		// LocalBaseline doesn't support update_memory, so it should skip
@@ -117,8 +117,9 @@ describe.skipIf(!LIVE_TESTS_ENABLED)("CRUD Semantics Benchmark - Live Integratio
 	test("metrics contain expected fields for write_retrieve", async () => {
 		const cases = Array.from(crudBenchmark.cases());
 		const writeRetrieveCase = cases.find((c) => c.id === "write_retrieve_01");
+		if (!writeRetrieveCase) throw new Error("write_retrieve_01 case not found");
 
-		const result = await crudBenchmark.run_case(provider, scope, writeRetrieveCase!);
+		const result = await crudBenchmark.run_case(provider, scope, writeRetrieveCase);
 
 		// Check all expected metric fields exist
 		expect(result.scores).toHaveProperty("write_retrieve_success");
@@ -133,8 +134,9 @@ describe.skipIf(!LIVE_TESTS_ENABLED)("CRUD Semantics Benchmark - Live Integratio
 	test("metrics contain expected fields for delete_leakage", async () => {
 		const cases = Array.from(crudBenchmark.cases());
 		const deleteLeakageCase = cases.find((c) => c.id === "delete_leakage_01");
+		if (!deleteLeakageCase) throw new Error("delete_leakage_01 case not found");
 
-		const result = await crudBenchmark.run_case(provider, scope, deleteLeakageCase!);
+		const result = await crudBenchmark.run_case(provider, scope, deleteLeakageCase);
 
 		// Check metric values are correct types
 		expect(typeof result.scores.delete_leakage_count).toBe("number");

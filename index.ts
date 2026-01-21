@@ -437,9 +437,7 @@ async function handleDoctor(rawArgs: string[]): Promise<void> {
 	if (!providerName) {
 		const providerNames = await getProviderNamesForHelp();
 		throw new Error(
-			`No provider specified.\n\n` +
-				`Usage: bun run index.ts doctor --provider <name> [--json]\n\n` +
-				`Available providers: ${providerNames}`,
+			`No provider specified.\n\nUsage: bun run index.ts doctor --provider <name> [--json]\n\nAvailable providers: ${providerNames}`,
 		);
 	}
 

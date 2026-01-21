@@ -56,3 +56,4 @@ runs/
 .specify/*
 specs/**
 **.skill
+.grepai/
