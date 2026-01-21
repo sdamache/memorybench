@@ -135,6 +135,11 @@ describe("US2: Capability Gating - Skip Incompatible Combinations", () => {
 		expect(plan.eligible_count).toBe(eligibleCount);
 		expect(plan.skipped_count).toBe(skippedCount);
 		expect(eligibleCount + skippedCount).toBe(plan.entries.length);
+
+		// Note: This test verifies plan structure and skip_reason format when entries ARE skipped.
+		// Currently, LocalBaseline + CRUD-semantics are fully compatible at the benchmark level,
+		// so skippedCount may be 0. A separate test with mismatched capabilities would be needed
+		// to verify actual gating behavior (e.g., a benchmark requiring update_memory).
 	});
 });
 
