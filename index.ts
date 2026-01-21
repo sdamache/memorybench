@@ -415,13 +415,21 @@ async function handleDoctor(rawArgs: string[]): Promise<void> {
 		const arg = rawArgs[i];
 
 		if (arg === "--provider" || arg === "-p") {
+			const nextArg = rawArgs[i + 1];
+			if (!nextArg || nextArg.startsWith("-")) {
+				throw new Error(`Missing value for ${arg} option`);
+			}
 			i++;
-			providerName = rawArgs[i];
+			providerName = nextArg;
 		} else if (arg === "--json") {
 			jsonOutput = true;
 		} else if (arg === "--output" || arg === "-o") {
+			const nextArg = rawArgs[i + 1];
+			if (!nextArg || nextArg.startsWith("-")) {
+				throw new Error(`Missing value for ${arg} option`);
+			}
 			i++;
-			outputPath = rawArgs[i];
+			outputPath = nextArg;
 		}
 	}
 

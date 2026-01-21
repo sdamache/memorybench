@@ -55,16 +55,17 @@ export async function runScopeIsolationTest(
 ): Promise<ConformanceTestResult> {
 	const startTime = Date.now();
 
+	// Define scope and track memory ID outside try for cleanup on error
+	const scopeA: ScopeContext = {
+		user_id: `doctor_user_a_${ctx.run_id}`,
+		run_id: ctx.run_id,
+		namespace: "doctor_test",
+	};
+	let memoryId: string | undefined;
+
 	try {
 		const token = generateTestToken();
 		const content = createTestContent(token, "scope isolation");
-
-		// Create two distinct scopes
-		const scopeA: ScopeContext = {
-			user_id: `doctor_user_a_${ctx.run_id}`,
-			run_id: ctx.run_id,
-			namespace: "doctor_test",
-		};
 
 		const scopeB: ScopeContext = {
 			user_id: `doctor_user_b_${ctx.run_id}`,
@@ -76,6 +77,7 @@ export async function runScopeIsolationTest(
 		const memory = await executeWithRetry(() =>
 			ctx.provider.add_memory(scopeA, content),
 		);
+		memoryId = memory.id;
 
 		// Wait for convergence
 		const convergenceMs = getConvergenceWaitMs(ctx.manifest);
@@ -159,6 +161,18 @@ export async function runScopeIsolationTest(
 			},
 		};
 	} catch (error) {
+		// Best-effort cleanup if memory was created before error
+		if (memoryId) {
+			try {
+				await executeWithRetry(
+					() => ctx.provider.delete_memory(scopeA, memoryId!),
+					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+				);
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
+
 		return {
 			test_name: "scope_isolation",
 			status: "error",
@@ -330,19 +344,23 @@ export async function runDeleteLeakageTest(
 ): Promise<ConformanceTestResult> {
 	const startTime = Date.now();
 
+	// Define scope and track memory ID outside try for cleanup on error
+	const scope: ScopeContext = {
+		user_id: `doctor_delete_${ctx.run_id}`,
+		run_id: ctx.run_id,
+		namespace: "doctor_test",
+	};
+	let memoryId: string | undefined;
+
 	try {
 		const token = generateTestToken();
 		const content = createTestContent(token, "delete leakage");
-		const scope: ScopeContext = {
-			user_id: `doctor_delete_${ctx.run_id}`,
-			run_id: ctx.run_id,
-			namespace: "doctor_test",
-		};
 
 		// Write memory
 		const memory = await executeWithRetry(() =>
 			ctx.provider.add_memory(scope, content),
 		);
+		memoryId = memory.id;
 
 		// Wait for convergence before delete
 		const convergenceMs = getConvergenceWaitMs(ctx.manifest);
@@ -416,6 +434,18 @@ export async function runDeleteLeakageTest(
 			details: { token, memory_id: memory.id },
 		};
 	} catch (error) {
+		// Best-effort cleanup if memory was created before error
+		if (memoryId) {
+			try {
+				await executeWithRetry(
+					() => ctx.provider.delete_memory(scope, memoryId!),
+					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+				);
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
+
 		return {
 			test_name: "delete_leakage",
 			status: "error",
@@ -495,22 +525,25 @@ export async function runUpdateStalenessTest(
 		};
 	}
 
+	// Define scope and track memory ID outside try for cleanup on error
+	const scope: ScopeContext = {
+		user_id: `doctor_update_${ctx.run_id}`,
+		run_id: ctx.run_id,
+		namespace: "doctor_test",
+	};
+	let memoryId: string | undefined;
+
 	try {
 		const tokenA = generateTestToken();
 		const tokenB = generateTestToken();
 		const contentA = createTestContent(tokenA, "update staleness original");
 		const contentB = createTestContent(tokenB, "update staleness updated");
 
-		const scope: ScopeContext = {
-			user_id: `doctor_update_${ctx.run_id}`,
-			run_id: ctx.run_id,
-			namespace: "doctor_test",
-		};
-
 		// Write original memory
 		const memory = await executeWithRetry(() =>
 			ctx.provider.add_memory(scope, contentA),
 		);
+		memoryId = memory.id;
 
 		// Wait for convergence
 		const convergenceMs = getConvergenceWaitMs(ctx.manifest);
@@ -610,6 +643,18 @@ export async function runUpdateStalenessTest(
 			},
 		};
 	} catch (error) {
+		// Best-effort cleanup if memory was created before error
+		if (memoryId) {
+			try {
+				await executeWithRetry(
+					() => ctx.provider.delete_memory(scope, memoryId!),
+					{ base_delay_ms: 250, max_delay_ms: 2000, max_retries: 2, jitter_factor: 0.25 },
+				);
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
+
 		return {
 			test_name: "update_staleness",
 			status: "error",

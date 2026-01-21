@@ -251,16 +251,16 @@ function calculateOverallStatus(
 ): ConformanceReportStatus {
 	const hasFailure = tests.some((t) => t.status === "fail");
 	const hasError = tests.some((t) => t.status === "error");
-	const allPassOrSkip = tests.every(
-		(t) => t.status === "pass" || t.status === "skip",
-	);
+	const hasPass = tests.some((t) => t.status === "pass");
 
 	if (hasFailure) {
 		return "fail";
 	}
 
-	if (hasError && !allPassOrSkip) {
-		return "partial";
+	if (hasError) {
+		// "partial" means some tests passed, some errored
+		// If no tests passed, conformance couldn't be verified - report as fail
+		return hasPass ? "partial" : "fail";
 	}
 
 	return "pass";

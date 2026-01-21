@@ -191,6 +191,54 @@ export function isAuthErrorMessage(message: string): boolean {
 	);
 }
 
+/**
+ * Check if an error message indicates a permanent (non-retryable) error.
+ *
+ * Permanent errors include:
+ * - Authentication errors (401, 403, invalid API key, etc.)
+ * - Not found errors (404)
+ * - Configuration errors
+ * - Invalid provider/resource errors
+ *
+ * These errors won't resolve by waiting, so we should fail fast.
+ *
+ * @param message - Error message to check
+ * @returns true if error is permanent and should not be retried
+ */
+export function isPermanentErrorMessage(message: string): boolean {
+	// Auth errors are always permanent
+	if (isAuthErrorMessage(message)) {
+		return true;
+	}
+
+	const lower = message.toLowerCase();
+
+	// Not found errors (resource doesn't exist)
+	if (/\b404\b/.test(lower) || lower.includes("not found")) {
+		return true;
+	}
+
+	// Configuration/setup errors
+	if (
+		lower.includes("invalid configuration") ||
+		lower.includes("misconfigured") ||
+		lower.includes("not configured")
+	) {
+		return true;
+	}
+
+	// Provider-specific permanent errors
+	if (
+		lower.includes("provider not") ||
+		lower.includes("unsupported") ||
+		lower.includes("not implemented")
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 const DEFAULT_DOCTOR_RETRY_POLICY: Partial<RetryPolicy> = {
 	base_delay_ms: 250,
 	max_delay_ms: 5000,
@@ -283,7 +331,8 @@ export async function waitForVisibility(
 			const retryResult = await retryExecutor.execute(pollFn, retryPolicy);
 			if (!retryResult.success) {
 				const message = retryResult.error.original.message;
-				if (isAuthErrorMessage(message)) {
+				// Fail fast on permanent errors (auth, 404, config issues)
+				if (isPermanentErrorMessage(message)) {
 					throw retryResult.error.original;
 				}
 				// Treat other failures as "not found yet" and keep polling.
@@ -299,12 +348,13 @@ export async function waitForVisibility(
 				};
 			}
 		} catch (error) {
-			// Ignore transient errors during polling, but stop early on clear auth failures.
-			// This matches the spec expectation that missing/invalid credentials should fail fast.
+			// Stop early on permanent errors (auth, 404, config issues).
+			// These won't resolve by waiting, so fail fast to keep doctor output actionable.
 			const message = error instanceof Error ? error.message : String(error);
-			if (isAuthErrorMessage(message)) {
+			if (isPermanentErrorMessage(message)) {
 				throw error;
 			}
+			// Transient errors (network timeouts, rate limits) are swallowed and polling continues.
 		}
 
 		// Calculate delay with exponential backoff
