@@ -97,6 +97,32 @@ function extractHttpStatus(error: Error): number | undefined {
 }
 
 /**
+ * Attempt to parse an HTTP status code from an error message string.
+ *
+ * This is a fallback for providers that embed HTTP status in Error.message
+ * instead of setting error.status / error.response.status.
+ */
+function extractHttpStatusFromMessage(message: string): number | undefined {
+	const patterns = [
+		/\bHTTP\s+(\d{3})\b/i,
+		/\bstatus\s*[:=]\s*(\d{3})\b/i,
+		/\bAPI error:\s*(\d{3})\b/i,
+	];
+
+	for (const pattern of patterns) {
+		const match = message.match(pattern);
+		if (!match || !match[1]) continue;
+
+		const parsed = Number.parseInt(match[1], 10);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+
+	return undefined;
+}
+
+/**
  * Check if error message matches transient patterns.
  *
  * @param message - Error message to check
@@ -129,7 +155,8 @@ function sleep(ms: number): Promise<void> {
  * @returns Classified error with category
  */
 export function classifyError(error: Error): ClassifiedError {
-	const httpStatus = extractHttpStatus(error);
+	const httpStatus =
+		extractHttpStatus(error) ?? extractHttpStatusFromMessage(error.message);
 
 	// Check HTTP status code first
 	if (httpStatus !== undefined) {
